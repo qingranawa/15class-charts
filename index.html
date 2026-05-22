@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>天津操蛋孩子榜</title>
+  <link rel="stylesheet" href="/public/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">
+        <span class="logo-icon">🔥</span>
+        <span class="logo-text">天津操蛋孩子榜</span>
+      </a>
+      <div class="nav-actions" id="navActions">
+        <button class="btn btn-outline btn-sm" onclick="App.showModal('login')">登录</button>
+        <button class="btn btn-primary btn-sm" onclick="App.showModal('register')">注册</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero 区 -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <h1 class="hero-title">
+        <span class="title-line-1">天津</span>
+        <span class="title-line-2">操蛋孩子榜</span>
+      </h1>
+      <p class="hero-subtitle">记录那些让你血压飙升的操蛋瞬间～谁才是津门最让人头疼的崽？</p>
+      <div class="hero-stats" id="heroStats">
+        <div class="stat-item">
+          <span class="stat-num" id="statEntries">--</span>
+          <span class="stat-label">上榜人数</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-num" id="statVotes">--</span>
+          <span class="stat-label">总投票数</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-num" id="statUsers">--</span>
+          <span class="stat-label">鉴宝大师</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 主内容区 -->
+  <main class="main">
+    <div class="container">
+      <!-- Tab 切换 -->
+      <div class="tabs">
+        <button class="tab active" data-tab="leaderboard">🏆 排行榜</button>
+        <button class="tab" data-tab="submit">✍️ 提交新人物</button>
+      </div>
+
+      <!-- ====== 排行榜视图 ====== -->
+      <div class="tab-content active" id="tabLeaderboard">
+        <!-- 排序 -->
+        <div class="sort-bar">
+          <span class="sort-label">排序：</span>
+          <button class="sort-btn active" data-sort="score">最高分</button>
+          <button class="sort-btn" data-sort="newest">最新</button>
+          <button class="sort-btn" data-sort="oldest">最早</button>
+        </div>
+
+        <!-- 前三名 -->
+        <div class="podium" id="podium"></div>
+
+        <!-- 剩余排行榜 -->
+        <div class="leaderboard-list" id="leaderboardList"></div>
+
+        <!-- 加载更多 -->
+        <div class="load-more" id="loadMore">
+          <button class="btn btn-outline" id="btnLoadMore">加载更多</button>
+        </div>
+
+        <!-- 空状态 -->
+        <div class="empty-state" id="emptyState" style="display:none">
+          <div class="empty-icon">📋</div>
+          <h3>还没有人上榜</h3>
+          <p>成为第一个提交操蛋孩子的人</p>
+        </div>
+      </div>
+
+      <!-- ====== 提交视图 ====== -->
+      <div class="tab-content" id="tabSubmit">
+        <div class="submit-card" id="submitCard">
+          <h2 class="section-title">提交一个操蛋孩子</h2>
+          <form class="submit-form" id="submitForm">
+            <div class="form-group">
+              <label for="entryName">人物名称 <span class="required">*</span></label>
+              <input type="text" id="entryName" placeholder="给他/她起个响亮的名号" maxlength="50" required>
+            </div>
+            <div class="form-group">
+              <label for="entryCategory">分类</label>
+              <select id="entryCategory">
+                <option value="classmate">同学</option>
+                <option value="colleague">同事</option>
+                <option value="stranger">路人</option>
+                <option value="family">家人</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="entryDesc">操蛋事迹 <span class="required">*</span></label>
+              <textarea id="entryDesc" placeholder="详细描述 TA 的操蛋行为…（2000 字以内）" maxlength="2000" rows="5" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-full">🚀 提交上榜</button>
+          </form>
+        </div>
+        <div class="submit-login-hint" id="submitLoginHint">
+          <div class="hint-icon">🔒</div>
+          <h3>登录后才能提交</h3>
+          <p>先登录或注册一个账号吧～</p>
+          <div class="hint-actions">
+            <button class="btn btn-primary" onclick="App.showModal('login')">登录</button>
+            <button class="btn btn-outline" onclick="App.showModal('register')">注册</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <p>天津操蛋孩子榜 &copy; 2026 — 纯属娱乐，别太当真</p>
+    <p class="footer-sub">本网站仅代表网友主观意见，排名不代表实际情况</p>
+  </footer>
+
+  <!-- ====== 登录弹窗 ====== -->
+  <div class="modal-overlay" id="modalLogin">
+    <div class="modal">
+      <button class="modal-close" onclick="App.closeModal('login')">&times;</button>
+      <h2 class="modal-title">登录</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginUsername">用户名</label>
+          <input type="text" id="loginUsername" placeholder="请输入用户名" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">密码</label>
+          <input type="password" id="loginPassword" placeholder="请输入密码" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-full">登录</button>
+      </form>
+      <p class="modal-switch">还没有账号？<a href="#" onclick="App.switchModal('login','register')">去注册</a></p>
+    </div>
+  </div>
+
+  <!-- ====== 注册弹窗 ====== -->
+  <div class="modal-overlay" id="modalRegister">
+    <div class="modal">
+      <button class="modal-close" onclick="App.closeModal('register')">&times;</button>
+      <h2 class="modal-title">注册</h2>
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="regUsername">用户名</label>
+          <input type="text" id="regUsername" placeholder="2-20 个字符" minlength="2" maxlength="20" required>
+        </div>
+        <div class="form-group">
+          <label for="regPassword">密码</label>
+          <input type="password" id="regPassword" placeholder="至少 6 个字符" minlength="6" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-full">注册</button>
+      </form>
+      <p class="modal-switch">已有账号？<a href="#" onclick="App.switchModal('register','login')">去登录</a></p>
+    </div>
+  </div>
+
+  <!-- Toast 容器 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/public/js/api.js"></script>
+  <script src="/public/js/auth.js"></script>
+  <script src="/public/js/components.js"></script>
+  <script src="/public/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "the-fuck-children-of-tj",
+  "version": "1.0.0",
+  "private": true,
+  "description": "天津操蛋孩子榜",
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
