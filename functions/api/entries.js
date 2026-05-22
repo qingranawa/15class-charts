@@ -1,5 +1,5 @@
 // GET & POST /api/entries
-import { json, error, readBody, getAuthUser } from '../../_utils.js';
+import { json, error, readBody, getAuthUser } from '../_utils.js';
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);

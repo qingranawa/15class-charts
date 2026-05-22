@@ -1,5 +1,5 @@
 // POST /api/vote
-import { json, error, readBody, getAuthUser } from '../../_utils.js';
+import { json, error, readBody, getAuthUser } from '../_utils.js';
 
 export async function onRequestPost({ request, env }) {
   const user = await getAuthUser(request, env);

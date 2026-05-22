@@ -5,7 +5,7 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "DB"
 database_name = "tj-kids-db"
-database_id = ""
+database_id = "40ea4d90-07f1-4592-997f-236cc8b16a45"
 
 [vars]
 JWT_SECRET = "change-me-in-production-use-a-random-string"
