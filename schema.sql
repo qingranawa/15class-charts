@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   role TEXT DEFAULT 'user',
+  vote_balance INTEGER DEFAULT 10,
+  last_vote_refill TEXT DEFAULT (datetime('now')),
   created_at TEXT DEFAULT (datetime('now'))
 );
 

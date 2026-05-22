@@ -5,12 +5,14 @@ const App = {
   currentSort: 'score',
   hasMore: true,
   loading: false,
+  voteBalance: 0,
 
   async init() {
     Auth.init();
     this.bindEvents();
     this.updateAuthUI();
     this.checkSubmitAccess();
+    if (Auth.isLoggedIn()) await this.refreshVoteBalance();
     await this.loadLeaderboard();
   },
 
@@ -75,6 +77,7 @@ const App = {
     const user = Auth.getUser();
     if (user) {
       nav.innerHTML = `
+        <span class="nav-votes">🎫 <strong>${this.voteBalance}</strong> 票</span>
         <span class="nav-user">👤 ${Components.esc(user.username)}</span>
         <button class="btn btn-outline btn-sm" onclick="App.logout()">退出</button>
       `;
@@ -84,6 +87,15 @@ const App = {
         <button class="btn btn-primary btn-sm" onclick="App.showModal('register')">注册</button>
       `;
     }
+  },
+
+  async refreshVoteBalance() {
+    if (!Auth.isLoggedIn()) return;
+    try {
+      const data = await API.getVoteBalance();
+      this.voteBalance = data.vote_balance;
+      this.updateAuthUI();
+    } catch { /* ignore */ }
   },
 
   checkSubmitAccess() {
@@ -123,6 +135,7 @@ const App = {
       const data = await API.login(username, password);
       Auth.setSession(data.token, data.user);
       this.updateAuthUI();
+      await this.refreshVoteBalance();
       this.checkSubmitAccess();
       this.closeModal('login');
       Components.showToast(`欢迎回来，${data.user.username}～`, 'success');
@@ -237,7 +250,10 @@ const App = {
     }
     try {
       const data = await API.vote(entryId, value);
-      Components.showToast(data.vote === null ? '已取消投票' : '投票成功！', 'success');
+      this.voteBalance = data.vote_balance;
+      this.updateAuthUI();
+      const msg = data.vote === null ? '已取消投票' : `投票成功！剩余 ${data.vote_balance} 票`;
+      Components.showToast(msg, 'success');
       this.loadLeaderboard();
     } catch (err) {
       Components.showToast(err.message, 'error');

@@ -50,4 +50,7 @@ const API = {
   vote(entry_id, value) {
     return this.request('/vote', { method: 'POST', body: { entry_id, value } });
   },
+  getVoteBalance() {
+    return this.request('/vote');
+  },
 };

@@ -63,6 +63,7 @@ a:hover { text-decoration: underline; }
 
 .nav-actions { display: flex; gap: 8px; align-items: center; }
 .nav-user { font-size: 0.88rem; color: var(--text); font-weight: 500; }
+.nav-votes { font-size: 0.82rem; color: var(--gold); background: var(--gold-bg); padding: 3px 10px; border-radius: 20px; }
 
 /* ====== Buttons ====== */
 .btn {
