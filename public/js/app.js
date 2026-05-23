@@ -487,6 +487,10 @@ const App = {
       document.getElementById('editEntryCategory').value = entry.category;
       document.getElementById('editEntryDesc').value = entry.description;
       document.getElementById('editEntryScore').value = entry.score;
+      // 非管理员不能改分数
+      const user = Auth.getUser();
+      const isStaff = user && (user.role === 'admin' || user.role === 'owner');
+      document.getElementById('editEntryScore').closest('.form-group').style.display = isStaff ? '' : 'none';
       this.showModal('editEntry');
     } catch (err) {
       Components.showToast('加载条目信息失败：' + err.message, 'error');
@@ -499,10 +503,15 @@ const App = {
     const name = document.getElementById('editEntryName').value.trim();
     const category = document.getElementById('editEntryCategory').value;
     const description = document.getElementById('editEntryDesc').value.trim();
-    const score = parseInt(document.getElementById('editEntryScore').value);
+    const body = { name, category, description };
+    const user = Auth.getUser();
+    const isStaff = user && (user.role === 'admin' || user.role === 'owner');
+    if (isStaff) {
+      body.score = parseInt(document.getElementById('editEntryScore').value);
+    }
 
     try {
-      await API.adminUpdateEntry(id, { name, category, description, score });
+      await API.adminUpdateEntry(id, body);
       Components.clearCache('adminEntries');
       Components.showToast('条目已更新喵～', 'success');
       this.closeModal('editEntry');

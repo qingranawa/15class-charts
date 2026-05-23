@@ -1,13 +1,20 @@
 // PATCH & DELETE /api/admin/entries/:id — 管理员编辑/删除条目
-import { json, error, readBody } from '../../../_utils.js';
+// 提交者也可以编辑自己的条目内容，但不能改分数喵～
+import { json, error, readBody, getAuthUser } from '../../../_utils.js';
 import { requireStaff } from '../../../_admin.js';
 
 export async function onRequestPatch({ request, env, params }) {
-  const auth = await requireStaff(request, env);
-  if (auth.error) return auth.error;
+  const staff = await requireStaff(request, env);
+  const isStaff = !staff.error;
 
-  const entry = await env.DB.prepare('SELECT id FROM entries WHERE id = ?').bind(params.id).first();
+  const bodyUser = await getAuthUser(request, env);
+  if (!isStaff && !bodyUser) return error('请先登录', 401);
+
+  const entry = await env.DB.prepare('SELECT id, submitted_by FROM entries WHERE id = ? AND deleted_at IS NULL').bind(params.id).first();
   if (!entry) return error('条目不存在', 404);
+
+  // 非管理员的提交者也只能编辑自己的条目
+  if (!isStaff && entry.submitted_by !== bodyUser.userId) return error('只能编辑自己提交的条目', 403);
 
   const body = await readBody(request);
   const updates = [];
@@ -32,6 +39,7 @@ export async function onRequestPatch({ request, env, params }) {
     values.push(body.category);
   }
   if (body.score !== undefined) {
+    if (!isStaff) return error('仅限管理员修改分数', 403);
     const score = parseInt(body.score);
     if (isNaN(score)) return error('无效的分数喵～');
     updates.push('score = ?');
