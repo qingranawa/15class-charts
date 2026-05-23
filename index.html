@@ -64,6 +64,11 @@
 
       <!-- ====== 排行榜视图 ====== -->
       <div class="tab-content active" id="tabLeaderboard">
+        <!-- 搜索 -->
+        <div class="search-bar">
+          <input type="text" id="searchInput" class="search-input" placeholder="搜索人物名称或事迹…" autocomplete="off">
+        </div>
+
         <!-- 排序 -->
         <div class="sort-bar">
           <span class="sort-label">排序：</span>
@@ -94,7 +99,7 @@
       <!-- ====== 提交视图 ====== -->
       <div class="tab-content" id="tabSubmit">
         <div class="submit-card" id="submitCard">
-          <h2 class="section-title">提交一个操蛋孩子</h2>
+          <h2 class="section-title">提交一个淡紫</h2>
           <form class="submit-form" id="submitForm">
             <div class="form-group">
               <label for="entryName">人物名称 <span class="required">*</span></label>
@@ -111,7 +116,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="entryDesc">操蛋事迹 <span class="required">*</span></label>
+              <label for="entryDesc">事迹 <span class="required">*</span></label>
               <textarea id="entryDesc" placeholder="详细描述 TA 的操蛋行为…（2000 字以内）" maxlength="2000" rows="5" required></textarea>
             </div>
             <button type="submit" class="btn btn-primary btn-lg btn-full">🚀 提交上榜</button>
@@ -164,6 +169,7 @@
           <div class="admin-tabs">
             <button class="admin-tab active" data-admin-tab="users">用户管理</button>
             <button class="admin-tab" data-admin-tab="entries">条目管理</button>
+            <button class="admin-tab" data-admin-tab="reports">投诉管理</button>
           </div>
           <div class="admin-content active" id="adminUsers">
             <div class="admin-table-wrap">
@@ -177,6 +183,14 @@
             <div class="admin-table-wrap">
               <table class="admin-table" id="adminEntriesTable">
                 <thead><tr><th>ID</th><th>名称</th><th>得分</th><th>提交者</th><th>时间</th><th>操作</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="admin-content" id="adminReports">
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="adminReportsTable">
+                <thead><tr><th>ID</th><th>条目</th><th>投诉人</th><th>理由</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
                 <tbody></tbody>
               </table>
             </div>

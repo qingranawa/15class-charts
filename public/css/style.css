@@ -158,6 +158,17 @@ a:hover { text-decoration: underline; }
 .tab-content { display: none; }
 .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
 
+/* ====== Search Bar ====== */
+.search-bar { margin-bottom: 16px; }
+.search-input {
+  width: 100%; padding: 10px 16px; border-radius: 8px;
+  border: 1px solid var(--border); background: rgba(0,0,0,0.2);
+  color: var(--text); font-family: inherit; font-size: 0.9rem;
+  outline: none; transition: border-color var(--transition);
+}
+.search-input:focus { border-color: var(--gold-dim); }
+.search-input::placeholder { color: var(--text-muted); }
+
 /* ====== Sort Bar ====== */
 .sort-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
 .sort-label { color: var(--text-secondary); font-size: 0.85rem; }
@@ -415,7 +426,8 @@ a:hover { text-decoration: underline; }
 .detail-score-big { font-size: 2.5rem; font-weight: 900; color: var(--gold); text-align: center; margin: 16px 0 8px; }
 .detail-vote-stats { display: flex; justify-content: center; gap: 24px; font-size: 0.9rem; margin-bottom: 16px; }
 .detail-desc { font-size: 0.95rem; line-height: 1.7; color: var(--text-secondary); margin-bottom: 20px; white-space: pre-wrap; }
-.detail-meta { font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-bottom: 20px; }
+.detail-meta { font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-bottom: 16px; }
+.detail-actions { display: flex; justify-content: center; gap: 8px; margin-top: 8px; }
 .detail-votes { display: flex; align-items: center; justify-content: center; gap: 16px; }
 .detail-votes .btn-vote { width: 48px; height: 48px; font-size: 1.3rem; border-radius: 12px; }
 

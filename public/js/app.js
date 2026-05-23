@@ -3,9 +3,11 @@
 const App = {
   currentPage: 1,
   currentSort: 'score',
+  currentSearch: '',
   hasMore: true,
   loading: false,
   voteBalance: 0,
+  searchTimer: null,
 
   async init() {
     Auth.init();
@@ -61,13 +63,31 @@ const App = {
       }
     });
 
+    // 搜索输入（防抖 300ms）
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        clearTimeout(this.searchTimer);
+        this.searchTimer = setTimeout(() => {
+          this.currentSearch = searchInput.value.trim();
+          this.currentPage = 1;
+          this.hasMore = true;
+          this.loadLeaderboard();
+        }, 300);
+      });
+    }
+
     // 管理员面板内 Tab 切换
     document.querySelectorAll('.admin-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('active', t === tab));
-        document.querySelectorAll('.admin-content').forEach(c => c.classList.toggle('active', c.id === `admin${tab.dataset.adminTab === 'users' ? 'Users' : 'Entries'}`));
+        document.querySelectorAll('.admin-content').forEach(c => {
+          const tabMap = { users: 'Users', entries: 'Entries', reports: 'Reports' };
+          c.classList.toggle('active', c.id === `admin${tabMap[tab.dataset.adminTab] || tab.dataset.adminTab}`);
+        });
         if (tab.dataset.adminTab === 'users') Components.renderAdminUsers();
-        else Components.renderAdminEntries();
+        else if (tab.dataset.adminTab === 'entries') Components.renderAdminEntries();
+        else if (tab.dataset.adminTab === 'reports') Components.renderAdminReports();
       });
     });
   },
@@ -204,7 +224,9 @@ const App = {
   async loadLeaderboard() {
     this.loading = true;
     try {
-      const data = await API.getEntries({ page: 1, limit: 20, sort: this.currentSort });
+      const params = { page: 1, limit: 20, sort: this.currentSort };
+      if (this.currentSearch) params.search = this.currentSearch;
+      const data = await API.getEntries(params);
       const entries = data.entries;
       this.currentPage = data.page;
       this.hasMore = entries.length === data.limit && entries.length < data.total;
@@ -235,7 +257,9 @@ const App = {
     this.loading = true;
     try {
       const page = this.currentPage + 1;
-      const data = await API.getEntries({ page, limit: 20, sort: this.currentSort });
+      const params = { page, limit: 20, sort: this.currentSort };
+      if (this.currentSearch) params.search = this.currentSearch;
+      const data = await API.getEntries(params);
       const entries = data.entries;
       if (entries.length === 0) { this.hasMore = false; document.getElementById('loadMore').classList.add('hidden'); return; }
 
@@ -276,6 +300,47 @@ const App = {
     }
   },
 
+  // 乐观更新：投票后不刷新整个榜单，直接更新 DOM
+  updateEntryDOM(entryId, data) {
+    // 更新列表中的条目卡片
+    const card = document.querySelector(`.entry-card[data-entry-id="${entryId}"]`);
+    if (card) {
+      const btns = card.querySelectorAll(`[data-vote-btn="${entryId}"]`);
+      btns.forEach(b => {
+        b.classList.toggle('active-up', data.vote === 1);
+        b.classList.toggle('active-down', data.vote === -1);
+      });
+      const barWrap = card.querySelector(`[data-entry-score="${entryId}"]`);
+      if (barWrap) {
+        const pct = Math.round(Math.max(0, Math.min(10, data.score)) / 10 * 100);
+        const fill = barWrap.querySelector('.score-bar-fill');
+        const num = barWrap.querySelector('.score-bar-num');
+        if (fill) fill.style.width = pct + '%';
+        if (num) num.textContent = data.score + '/10';
+      }
+    }
+    // 更新 podium 卡片
+    const podiumCard = document.querySelector(`.podium-card[data-entry-id="${entryId}"]`);
+    if (podiumCard) {
+      const barWrap = podiumCard.querySelector(`[data-entry-score="${entryId}"]`);
+      if (barWrap) {
+        const pct = Math.round(Math.max(0, Math.min(10, data.score)) / 10 * 100);
+        const fill = barWrap.querySelector('.score-bar-fill');
+        const num = barWrap.querySelector('.score-bar-num');
+        if (fill) fill.style.width = pct + '%';
+        if (num) num.textContent = data.score + '/10';
+      }
+    }
+    // 更新详情模态框
+    const detailStats = document.querySelector('#detailContent .detail-vote-stats');
+    if (detailStats) {
+      detailStats.innerHTML = `
+        <span style="color:var(--green)">👍 ${data.up_votes || 0} 赞</span>
+        <span style="color:var(--red)">👎 ${data.down_votes || 0} 踩</span>
+      `;
+    }
+  },
+
   async vote(entryId, value) {
     if (!Auth.isLoggedIn()) {
       Components.showToast('登录后才能投票喵～', 'error');
@@ -285,9 +350,9 @@ const App = {
       const data = await API.vote(entryId, value);
       this.voteBalance = data.vote_balance;
       this.updateAuthUI();
+      this.updateEntryDOM(entryId, data);
       const msg = data.vote === null ? '已取消投票' : `投票成功！剩余 ${data.vote_balance} 票`;
       Components.showToast(msg, 'success');
-      this.loadLeaderboard();
     } catch (err) {
       Components.showToast(err.message, 'error');
     }
@@ -306,12 +371,14 @@ const App = {
 
   // ====== Detail Modal ======
   async showDetail(id) {
+    // 立即显示模态框（加载中状态）
+    document.getElementById('detailContent').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">加载中...</div>';
+    this.showModal('detail');
     try {
       const entry = await API.getEntry(id);
       Components.renderDetail(entry);
-      this.showModal('detail');
     } catch (err) {
-      Components.showToast('加载详情失败：' + err.message, 'error');
+      document.getElementById('detailContent').innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">加载失败：${Components.esc(err.message)}</div>`;
     }
   },
 
@@ -324,10 +391,10 @@ const App = {
       const data = await API.vote(id, value);
       this.voteBalance = data.vote_balance;
       this.updateAuthUI();
-      // 刷新详情
+      this.updateEntryDOM(id, data);
+      // 刷新详情模态框内容
       const entry = await API.getEntry(id);
       Components.renderDetail(entry);
-      this.loadLeaderboard();
       const msg = data.vote === null ? '已取消投票' : `投票成功！剩余 ${data.vote_balance} 票`;
       Components.showToast(msg, 'success');
     } catch (err) {
@@ -406,6 +473,78 @@ const App = {
       this.closeModal('editEntry');
       Components.renderAdminEntries();
       this.loadLeaderboard();
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  // ====== Report ======
+  async reportEntry(entryId) {
+    if (!Auth.isLoggedIn()) {
+      Components.showToast('请先登录喵～', 'error');
+      return;
+    }
+    const reason = prompt('请输入投诉理由（如内容不当、侵犯隐私等）：');
+    if (!reason || !reason.trim()) return;
+    try {
+      await API.createReport(entryId, reason.trim());
+      Components.showToast('投诉已提交，管理员将尽快处理喵～', 'success');
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  // ====== Manage Submitter from Detail ======
+  async manageSubmitter(entryId) {
+    try {
+      const entry = await API.getEntry(entryId);
+      if (!entry.submitted_by) {
+        Components.showToast('该条目没有关联用户（可能已被删除）', 'error');
+        return;
+      }
+      // 获取提交者信息
+      const data = await API.adminGetUsers();
+      const submitter = data.users.find(u => u.id === entry.submitted_by);
+      if (!submitter) {
+        Components.showToast('提交者不存在', 'error');
+        return;
+      }
+      const action = prompt(
+        `管理用户: ${submitter.username} (ID: ${submitter.id})\n角色: ${submitter.role}\n票数: ${submitter.vote_balance}\n\n输入操作:\n  ban — 封禁用户（设为 unauthorized）\n  unban — 解封用户（设为 user）\n  delete — 删除该用户及所有数据`
+      );
+      if (!action) return;
+      switch (action.trim().toLowerCase()) {
+        case 'ban':
+          if (!confirm(`确定要封禁用户 ${submitter.username} 吗？`)) return;
+          await API.adminUpdateUser(submitter.id, { role: 'unauthorized' });
+          Components.showToast(`用户 ${submitter.username} 已被封禁`, 'success');
+          break;
+        case 'unban':
+          await API.adminUpdateUser(submitter.id, { role: 'user' });
+          Components.showToast(`用户 ${submitter.username} 已解封`, 'success');
+          break;
+        case 'delete':
+          if (!confirm(`确定要删除用户 ${submitter.username} 及其所有数据吗？此操作不可撤销！`)) return;
+          await API.adminDeleteUser(submitter.id);
+          Components.showToast('用户已删除', 'success');
+          this.closeModal('detail');
+          this.loadLeaderboard();
+          break;
+        default:
+          Components.showToast('无效操作，请输入 ban / unban / delete', 'error');
+      }
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  // ====== Report Resolution ======
+  async resolveReport(id, status) {
+    const resolution = status === 'resolved' ? '投诉有效，已处理' : '投诉无效，已驳回';
+    try {
+      await API.adminResolveReport(id, { status, resolution });
+      Components.showToast(status === 'resolved' ? '投诉已通过' : '投诉已驳回', 'success');
+      Components.renderAdminReports();
     } catch (err) {
       Components.showToast(err.message, 'error');
     }

@@ -33,3 +33,17 @@ CREATE TABLE IF NOT EXISTS votes (
 CREATE INDEX IF NOT EXISTS idx_entries_score ON entries(score DESC);
 CREATE INDEX IF NOT EXISTS idx_votes_entry ON votes(entry_id);
 CREATE INDEX IF NOT EXISTS idx_votes_user_entry ON votes(user_id, entry_id);
+
+-- 投诉/仲裁表
+CREATE TABLE IF NOT EXISTS reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER REFERENCES entries(id) ON DELETE CASCADE,
+  reporter_id INTEGER REFERENCES users(id),
+  reason TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  resolution TEXT,
+  resolved_by INTEGER REFERENCES users(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  resolved_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);

@@ -70,4 +70,15 @@ const API = {
   adminUpdateEntry(id, data) {
     return this.request(`/admin/entries/${id}`, { method: 'PATCH', body: data });
   },
+
+  // Reports
+  createReport(entryId, reason) {
+    return this.request('/reports', { method: 'POST', body: { entry_id: entryId, reason } });
+  },
+  adminGetReports() {
+    return this.request('/admin/reports');
+  },
+  adminResolveReport(id, resolution) {
+    return this.request(`/admin/reports/${id}`, { method: 'PATCH', body: resolution });
+  },
 };

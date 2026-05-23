@@ -30,6 +30,7 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPost({ request, env }) {
   const user = await getAuthUser(request, env);
   if (!user) return error('请先登录', 401);
+  if (user.role === 'unauthorized') return error('账号已被限制，无法投票', 403);
 
   const { entry_id, value } = await readBody(request);
   if (!entry_id || ![-1, 1].includes(value)) return error('参数无效');

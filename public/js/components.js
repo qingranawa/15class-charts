@@ -33,11 +33,11 @@ const Components = {
     if (top3.length === 0) { podium.innerHTML = ''; return; }
 
     podium.innerHTML = top3.map((e, i) => `
-      <div class="podium-card rank-${i + 1}" onclick="App.showDetail(${e.id})">
+      <div class="podium-card rank-${i + 1}" data-entry-id="${e.id}" onclick="App.showDetail(${e.id})">
         <div class="podium-rank">${this.rankEmoji(i + 1)}</div>
         <div class="podium-name">${this.esc(e.name)}</div>
         <div class="podium-desc">${this.esc(e.description)}</div>
-        ${this.scoreBar(e.score)}
+        ${this.scoreBar(e.score, '', e.id)}
       </div>
     `).join('');
   },
@@ -49,7 +49,7 @@ const Components = {
     const html = entries.map((e, i) => {
       const rank = startRank + i;
       return `
-        <div class="entry-card" style="animation-delay:${i * 0.04}s" onclick="App.showDetail(${e.id})">
+        <div class="entry-card" data-entry-id="${e.id}" style="animation-delay:${i * 0.04}s" onclick="App.showDetail(${e.id})">
           <div class="entry-rank-num">${rank <= 3 ? this.rankEmoji(rank) : '#' + rank}</div>
           <div class="entry-info">
             <div class="entry-name">${this.esc(e.name)}</div>
@@ -61,9 +61,9 @@ const Components = {
             </div>
           </div>
           <div class="entry-votes" onclick="event.stopPropagation()">
-            <button class="btn-vote ${e.user_vote === 1 ? 'active-up' : ''}" onclick="App.vote(${e.id}, 1)" title="赞">▲</button>
-            ${this.scoreBar(e.score)}
-            <button class="btn-vote ${e.user_vote === -1 ? 'active-down' : ''}" onclick="App.vote(${e.id}, -1)" title="踩">▼</button>
+            <button class="btn-vote ${e.user_vote === 1 ? 'active-up' : ''}" data-vote-btn="${e.id}" onclick="App.vote(${e.id}, 1)" title="赞">👍</button>
+            ${this.scoreBar(e.score, '', e.id)}
+            <button class="btn-vote ${e.user_vote === -1 ? 'active-down' : ''}" data-vote-btn="${e.id}" onclick="App.vote(${e.id}, -1)" title="踩">👎</button>
           </div>
           ${user && e.submitted_by === user.id ? `
             <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); App.deleteEntry(${e.id})" title="删除">🗑</button>
@@ -105,30 +105,37 @@ const Components = {
     return div.innerHTML;
   },
 
-  scoreBar(score, cls = '') {
+  scoreBar(score, cls = '', entryId = '') {
     const pct = Math.round(Math.max(0, Math.min(10, score)) / 10 * 100);
-    return `<span class="score-bar-wrap ${cls}"><span class="score-bar"><span class="score-bar-fill" style="width:${pct}%"></span></span><span class="score-bar-num">${score}/10</span></span>`;
+    const attr = entryId ? ` data-entry-score="${entryId}"` : '';
+    return `<span class="score-bar-wrap ${cls}"${attr}><span class="score-bar"><span class="score-bar-fill" style="width:${pct}%"></span></span><span class="score-bar-num">${score}/10</span></span>`;
   },
 
   renderDetail(entry) {
     const ct = document.getElementById('detailContent');
+    const user = Auth.getUser();
+    const isStaff = user && (user.role === 'admin' || user.role === 'owner');
     ct.innerHTML = `
       <div class="detail-header">
         <div class="detail-name">${this.esc(entry.name)}</div>
         <span class="detail-category">${this.categoryLabel(entry.category)}</span>
       </div>
-      ${this.scoreBar(entry.score, 'detail-score-bar')}
+      ${this.scoreBar(entry.score, 'detail-score-bar', entry.id)}
       <div class="detail-vote-stats">
         <span style="color:var(--green)">👍 ${entry.up_votes || 0} 赞</span>
         <span style="color:var(--red)">👎 ${entry.down_votes || 0} 踩</span>
       </div>
       <div class="detail-votes">
-        <button class="btn-vote ${entry.user_vote === 1 ? 'active-up' : ''}" onclick="App.voteFromDetail(${entry.id}, 1)">▲</button>
-        <button class="btn-vote ${entry.user_vote === -1 ? 'active-down' : ''}" onclick="App.voteFromDetail(${entry.id}, -1)">▼</button>
+        <button class="btn-vote ${entry.user_vote === 1 ? 'active-up' : ''}" data-vote-btn="${entry.id}" onclick="App.voteFromDetail(${entry.id}, 1)">👍</button>
+        <button class="btn-vote ${entry.user_vote === -1 ? 'active-down' : ''}" data-vote-btn="${entry.id}" onclick="App.voteFromDetail(${entry.id}, -1)">👎</button>
       </div>
       <div class="detail-desc">${this.esc(entry.description)}</div>
       <div class="detail-meta">
         提交者：${this.esc(entry.submitter || '未知')} · ${this.timeAgo(entry.created_at)}
+      </div>
+      <div class="detail-actions">
+        ${user ? `<button class="btn btn-outline btn-sm" onclick="App.reportEntry(${entry.id})">🚩 投诉</button>` : ''}
+        ${isStaff ? `<button class="btn btn-outline btn-sm" onclick="App.manageSubmitter(${entry.id})" style="margin-left:8px">👤 管理提交者</button>` : ''}
       </div>
     `;
   },
@@ -143,8 +150,10 @@ const Components = {
           <td>${this.esc(u.username)}</td>
           <td>
             <select onchange="App.adminUpdateUser(${u.id}, 'role', this.value)">
+              <option value="unauthorized" ${u.role === 'unauthorized' ? 'selected' : ''}>unauthorized</option>
               <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
               <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+              <option value="owner" ${u.role === 'owner' ? 'selected' : ''}>owner</option>
             </select>
           </td>
           <td>
@@ -183,6 +192,32 @@ const Components = {
       `).join('');
     } catch (err) {
       Components.showToast('加载条目列表失败：' + err.message, 'error');
+    }
+  },
+
+  async renderAdminReports() {
+    try {
+      const data = await API.adminGetReports();
+      const tbody = document.querySelector('#adminReportsTable tbody');
+      const statusMap = { pending: '⏳ 待处理', resolved: '✅ 已处理', dismissed: '❌ 已驳回' };
+      tbody.innerHTML = data.reports.map(r => `
+        <tr>
+          <td>${r.id}</td>
+          <td>${this.esc(r.entry_name || '已删除')}</td>
+          <td>${this.esc(r.reporter_name || '-')}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${this.esc(r.reason)}">${this.esc(r.reason)}</td>
+          <td>${statusMap[r.status] || r.status}</td>
+          <td>${this.timeAgo(r.created_at)}</td>
+          <td>
+            ${r.status === 'pending' ? `
+              <button class="btn btn-sm btn-outline" onclick="App.resolveReport(${r.id}, 'resolved')" style="color:var(--green);margin-right:4px">通过</button>
+              <button class="btn btn-sm btn-outline" onclick="App.resolveReport(${r.id}, 'dismissed')" style="color:var(--red)">驳回</button>
+            ` : `<span style="font-size:0.8rem;color:var(--text-muted)">${this.esc(r.resolver_name || '')} · ${r.resolution || ''}</span>`}
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      Components.showToast('加载投诉列表失败：' + err.message, 'error');
     }
   },
 };

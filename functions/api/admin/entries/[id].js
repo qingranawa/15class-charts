@@ -1,9 +1,9 @@
 // PATCH & DELETE /api/admin/entries/:id — 管理员编辑/删除条目
 import { json, error, readBody } from '../../../_utils.js';
-import { requireAdmin } from '../../../_admin.js';
+import { requireStaff } from '../../../_admin.js';
 
 export async function onRequestPatch({ request, env, params }) {
-  const auth = await requireAdmin(request, env);
+  const auth = await requireStaff(request, env);
   if (auth.error) return auth.error;
 
   const entry = await env.DB.prepare('SELECT id FROM entries WHERE id = ?').bind(params.id).first();
@@ -48,7 +48,7 @@ export async function onRequestPatch({ request, env, params }) {
 }
 
 export async function onRequestDelete({ request, env, params }) {
-  const auth = await requireAdmin(request, env);
+  const auth = await requireStaff(request, env);
   if (auth.error) return auth.error;
 
   const entry = await env.DB.prepare('SELECT id FROM entries WHERE id = ?').bind(params.id).first();

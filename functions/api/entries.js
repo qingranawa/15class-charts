@@ -7,15 +7,23 @@ export async function onRequestGet({ request, env }) {
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit')) || 20));
   const offset = (page - 1) * limit;
   const sort = url.searchParams.get('sort') || 'score';
+  const search = url.searchParams.get('search') || '';
 
   const allowSort = { score: 'score DESC', newest: 'created_at DESC', oldest: 'created_at ASC' };
   const orderBy = allowSort[sort] || 'score DESC';
 
   const user = await getAuthUser(request, env);
 
+  let whereClause = '';
+  const whereParams = [];
+  if (search) {
+    whereClause = 'WHERE (e.name LIKE ? OR e.description LIKE ?)';
+    whereParams.push(`%${search}%`, `%${search}%`);
+  }
+
   const [entries, total] = await Promise.all([
-    env.DB.prepare(`SELECT e.*, u.username as submitter FROM entries e LEFT JOIN users u ON e.submitted_by = u.id ORDER BY ${orderBy} LIMIT ? OFFSET ?`).bind(limit, offset).all(),
-    env.DB.prepare('SELECT COUNT(*) as count FROM entries').first(),
+    env.DB.prepare(`SELECT e.*, u.username as submitter FROM entries e LEFT JOIN users u ON e.submitted_by = u.id ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`).bind(...whereParams, limit, offset).all(),
+    env.DB.prepare(`SELECT COUNT(*) as count FROM entries e ${whereClause}`).bind(...whereParams).first(),
   ]);
 
   // 为每个条目附加赞/踩数和用户投票状态
@@ -46,6 +54,7 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPost({ request, env }) {
   const user = await getAuthUser(request, env);
   if (!user) return error('请先登录', 401);
+  if (user.role === 'unauthorized') return error('账号已被限制，无法提交内容', 403);
 
   const { name, description, category } = await readBody(request);
   if (!name || !description) return error('名称和描述不能为空');
