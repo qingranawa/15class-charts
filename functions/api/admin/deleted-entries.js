@@ -1,6 +1,6 @@
 // GET /api/admin/deleted-entries — 获取 7 天内已删除的条目
-import { json } from '../../../_utils.js';
-import { requireStaff } from '../../../_admin.js';
+import { json } from '../../_utils.js';
+import { requireStaff } from '../../_admin.js';
 
 export async function onRequestGet({ request, env }) {
   const auth = await requireStaff(request, env);
