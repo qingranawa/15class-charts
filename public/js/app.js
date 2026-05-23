@@ -439,6 +439,7 @@ const App = {
       const body = {};
       body[field] = value;
       await API.adminUpdateUser(id, body);
+      Components.clearCache('adminUsers');
       Components.showToast('用户已更新', 'success');
       Components.renderAdminUsers();
     } catch (err) {
@@ -455,6 +456,7 @@ const App = {
     if (!confirm('确定要删除该用户及其所有数据和投票吗？此操作不可撤销！')) return;
     try {
       await API.adminDeleteUser(id);
+      Components.clearCache('adminUsers');
       Components.showToast('用户已删除', 'success');
       Components.renderAdminUsers();
       this.loadLeaderboard();
@@ -467,6 +469,7 @@ const App = {
     if (!confirm('确定要删除该条目吗？')) return;
     try {
       await API.adminDeleteEntry(id);
+      Components.clearCache('adminEntries');
       Components.showToast('条目已删除', 'success');
       Components.renderAdminEntries();
       this.loadLeaderboard();
@@ -500,6 +503,7 @@ const App = {
 
     try {
       await API.adminUpdateEntry(id, { name, category, description, score });
+      Components.clearCache('adminEntries');
       Components.showToast('条目已更新喵～', 'success');
       this.closeModal('editEntry');
       Components.renderAdminEntries();
@@ -555,6 +559,7 @@ const App = {
     try {
       await API.adminBanUser(id, duration);
       Components.showToast(`已封禁 ${duration}`, 'success');
+      Components.clearCache('adminUsers');
       Components.renderAdminUsers();
       Components.renderAdminStaff();
     } catch (err) {
@@ -567,6 +572,7 @@ const App = {
     try {
       await API.adminUnbanUser(id);
       Components.showToast('已解封', 'success');
+      Components.clearCache('adminUsers');
       Components.renderAdminUsers();
       Components.renderAdminStaff();
     } catch (err) {
@@ -592,6 +598,8 @@ const App = {
     try {
       await API.adminDeleteEntry(entryId);
       try { await API.adminResolveReport(reportId, { status: 'resolved', resolution: '已下架删除' }); } catch {}
+      Components.clearCache('adminReports');
+      Components.clearCache('adminEntries');
       Components.showToast('已下架删除', 'success');
       Components.renderAdminReports();
       this.loadLeaderboard();
@@ -604,6 +612,7 @@ const App = {
     const resolution = status === 'resolved' ? '投诉已处理' : '投诉已驳回';
     try {
       await API.adminResolveReport(id, { status, resolution });
+      Components.clearCache('adminReports');
       Components.showToast(status === 'resolved' ? '已处理' : '已驳回', 'success');
       Components.renderAdminReports();
     } catch (err) {
@@ -616,6 +625,7 @@ const App = {
     if (!confirm('确定恢复该条目吗？')) return;
     try {
       await API.adminRestoreEntry(id);
+      Components.clearCache('adminDeleted');
       Components.showToast('条目已恢复', 'success');
       Components.renderDeletedEntries();
       this.loadLeaderboard();
@@ -628,6 +638,7 @@ const App = {
     if (!confirm('永久删除后无法恢复，确定吗？')) return;
     try {
       await API.adminPermanentDeleteEntry(id);
+      Components.clearCache('adminDeleted');
       Components.showToast('已永久删除', 'success');
       Components.renderDeletedEntries();
     } catch (err) {
@@ -642,6 +653,7 @@ const App = {
     if (!confirm(`确定批量封禁 ${ids.length} 个用户 ${duration} 吗？`)) return;
     try {
       for (const id of ids) { await API.adminBanUser(id, duration); }
+      Components.clearCache('adminUsers');
       Components.showToast(`已封禁 ${ids.length} 个用户`, 'success');
       Components.renderAdminUsers();
       document.getElementById('adminUsersCheckAll').checked = false;

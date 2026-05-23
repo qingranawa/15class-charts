@@ -3,6 +3,12 @@
 const Components = {
   _pages: {},
   _lastCheckbox: null,
+  _cache: {},
+
+  clearCache(key) {
+    if (key) { delete this._cache[key]; }
+    else { this._cache = {}; }
+  },
 
   categoryLabel(cat) {
     const map = { classmate: '同学', colleague: '同事', stranger: '路人', family: '家人', other: '其他' };
@@ -167,11 +173,15 @@ const Components = {
 
   goToPage(key, page) {
     this._pages[key] = page;
-    // 清除复选框
     const master = document.getElementById(`${key}CheckAll`);
     if (master) master.checked = false;
     this.updateBatchBar(key === 'myEntries' ? 'myEntries' : 'adminUsers');
-    // 重新渲染
+    // 动画
+    const tbody = document.querySelector(`#${key === 'myEntries' ? 'myEntriesTable' : key === 'adminUsers' ? 'adminUsersTable' : key === 'adminEntries' ? 'adminEntriesTable' : key === 'adminReports' ? 'adminReportsTable' : key === 'adminStaff' ? 'adminStaffTable' : 'adminDeletedTable'} tbody`);
+    if (tbody) {
+      tbody.classList.add('switching');
+      setTimeout(() => tbody.classList.remove('switching'), 150);
+    }
     const renderMap = {
       adminUsers: () => Components.renderAdminUsers(document.getElementById('adminSearchInput')?.value?.trim() || ''),
       adminEntries: () => Components.renderAdminEntries(),
@@ -235,15 +245,21 @@ const Components = {
 
   async renderAdminUsers(filterText = '') {
     try {
-      const data = await API.adminGetUsers();
-      const tbody = document.querySelector('#adminUsersTable tbody');
-      const currentUser = Auth.getUser();
-      const isOwner = currentUser && currentUser.role === 'owner';
-      let users = data.users;
+      let users;
+      if (!filterText && this._cache.adminUsers) {
+        users = this._cache.adminUsers;
+      } else {
+        const data = await API.adminGetUsers();
+        users = data.users;
+        if (!filterText) this._cache.adminUsers = users;
+      }
       if (filterText) {
         const f = filterText.toLowerCase();
         users = users.filter(u => u.username.toLowerCase().includes(f) || String(u.id).includes(f));
       }
+      const tbody = document.querySelector('#adminUsersTable tbody');
+      const currentUser = Auth.getUser();
+      const isOwner = currentUser && currentUser.role === 'owner';
       const { pageData, page, totalPages } = this.paginateData(users, 'adminUsers');
       tbody.innerHTML = pageData.map(u => {
         const isTargetOwner = u.role === 'owner';
@@ -289,9 +305,16 @@ const Components = {
 
   async renderAdminEntries() {
     try {
-      const data = await API.getEntries({ limit: 200, sort: 'newest' });
+      let entries;
+      if (this._cache.adminEntries) {
+        entries = this._cache.adminEntries;
+      } else {
+        const data = await API.getEntries({ limit: 200, sort: 'newest' });
+        entries = data.entries;
+        this._cache.adminEntries = entries;
+      }
       const tbody = document.querySelector('#adminEntriesTable tbody');
-      const { pageData, page, totalPages } = this.paginateData(data.entries, 'adminEntries');
+      const { pageData, page, totalPages } = this.paginateData(entries, 'adminEntries');
       tbody.innerHTML = pageData.map(e => `
         <tr>
           <td>${e.id}</td>
@@ -315,9 +338,16 @@ const Components = {
 
   async renderAdminReports() {
     try {
-      const data = await API.adminGetReports();
+      let reports;
+      if (this._cache.adminReports) {
+        reports = this._cache.adminReports;
+      } else {
+        const data = await API.adminGetReports();
+        reports = data.reports;
+        this._cache.adminReports = reports;
+      }
       const tbody = document.querySelector('#adminReportsTable tbody');
-      const { pageData, page, totalPages } = this.paginateData(data.reports, 'adminReports');
+      const { pageData, page, totalPages } = this.paginateData(reports, 'adminReports');
       const statusMap = { pending: '⏳ 待处理', resolved: '✅ 已处理', dismissed: '❌ 已驳回' };
       tbody.innerHTML = pageData.map(r => {
         const isPending = r.status === 'pending';
@@ -353,8 +383,15 @@ const Components = {
 
   async renderAdminStaff() {
     try {
-      const data = await API.adminGetUsers();
-      const staff = data.users.filter(u => u.role === 'admin' || u.role === 'owner');
+      let users;
+      if (this._cache.adminUsers) {
+        users = this._cache.adminUsers;
+      } else {
+        const data = await API.adminGetUsers();
+        users = data.users;
+        this._cache.adminUsers = users;
+      }
+      const staff = users.filter(u => u.role === 'admin' || u.role === 'owner');
       const { pageData, page, totalPages } = this.paginateData(staff, 'adminStaff');
       const tbody = document.querySelector('#adminStaffTable tbody');
       const currentUser = Auth.getUser();

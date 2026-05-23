@@ -481,6 +481,10 @@ a:hover { text-decoration: underline; }
 .pagination-bar .btn-sm:disabled { opacity: 0.4; pointer-events: none; }
 .page-info { font-size: 0.85rem; color: var(--text-secondary); }
 
+/* 分页切换动画 */
+.admin-table-wrap tbody { transition: opacity 0.15s ease; }
+.admin-table-wrap tbody.switching { opacity: 0.4; }
+
 /* ====== Footer Disclaimer ====== */
 .footer-disclaimer { font-size: 0.75rem; margin-top: 8px; color: var(--text-muted); opacity: 0.7; }
 
