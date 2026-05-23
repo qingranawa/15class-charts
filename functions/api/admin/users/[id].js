@@ -22,14 +22,18 @@ export async function onRequestPatch({ request, env, params }) {
   const target = await env.DB.prepare('SELECT id, role FROM users WHERE id = ?').bind(targetId).first();
   if (!target) return error('用户不存在', 404);
 
-  // admin 不能修改 owner，owner 可以修改任何人
+  // admin 不能修改 owner，owner 可以修改任何人喵～
   if (auth.user.role === 'admin' && target.role === 'owner') {
     return error('管理员无权修改所有者账号', 403);
   }
 
-  if (auth.user.userId === targetId) return error('不能操作自己', 400);
-
   const body = await readBody(request);
+
+  // 自己不能改自己的角色/封禁状态，但可以给自己加票喵～
+  if (auth.user.userId === targetId) {
+    const hasDangerousOps = body.role !== undefined || body.ban_duration !== undefined;
+    if (hasDangerousOps) return error('不能操作自己', 400);
+  }
 
   // 定时封禁：ban_duration = "5h" / "1d" / "7d" / "1m" / "50y" 等
   if (body.ban_duration) {
@@ -42,7 +46,7 @@ export async function onRequestPatch({ request, env, params }) {
   }
 
   if (body.role !== undefined) {
-    if (!['user', 'admin', 'unauthorized'].includes(body.role)) return error('无效的角色');
+    if (!['user', 'admin', 'unauthorized', 'owner'].includes(body.role)) return error('无效的角色');
     if (body.role === 'owner' && auth.user.role !== 'owner') return error('仅限所有者设置 owner 角色', 403);
     if (target.role === 'owner' && body.role !== 'owner' && auth.user.role !== 'owner') return error('无权修改所有者角色', 403);
 

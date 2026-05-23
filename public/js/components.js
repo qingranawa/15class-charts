@@ -6,8 +6,8 @@ const Components = {
   _cache: {},
 
   clearCache(key) {
-    if (key) { delete this._cache[key]; }
-    else { this._cache = {}; }
+    if (key) { delete this._cache[key]; this._pages[key] = 1; }
+    else { this._cache = {}; this._pages = {}; }
   },
 
   categoryLabel(cat) {
@@ -172,12 +172,21 @@ const Components = {
   },
 
   goToPage(key, page) {
+    // 防止连续快速点击导致渲染重叠喵～
+    if (this._rendering && this._rendering[key]) {
+      // 正在渲染中，只更新目标页码，等当前渲染完成后会检查
+      this._pages[key] = page;
+      return;
+    }
+    if (!this._rendering) this._rendering = {};
+
     this._pages[key] = page;
     const master = document.getElementById(`${key}CheckAll`);
     if (master) master.checked = false;
     this.updateBatchBar(key === 'myEntries' ? 'myEntries' : 'adminUsers');
     // 动画
-    const tbody = document.querySelector(`#${key === 'myEntries' ? 'myEntriesTable' : key === 'adminUsers' ? 'adminUsersTable' : key === 'adminEntries' ? 'adminEntriesTable' : key === 'adminReports' ? 'adminReportsTable' : key === 'adminStaff' ? 'adminStaffTable' : 'adminDeletedTable'} tbody`);
+    const tableMap = { adminUsers: 'adminUsersTable', adminEntries: 'adminEntriesTable', adminReports: 'adminReportsTable', adminStaff: 'adminStaffTable', adminDeleted: 'adminDeletedTable', myEntries: 'myEntriesTable' };
+    const tbody = document.querySelector(`#${tableMap[key]} tbody`);
     if (tbody) {
       tbody.classList.add('switching');
       setTimeout(() => tbody.classList.remove('switching'), 150);
@@ -190,7 +199,21 @@ const Components = {
       adminDeleted: () => Components.renderDeletedEntries(),
       myEntries: () => Components.renderMyEntries(),
     };
-    if (renderMap[key]) renderMap[key]();
+    const fn = renderMap[key];
+    if (fn) {
+      this._rendering[key] = true;
+      const startPage = page;
+      (async () => {
+        try {
+          await fn();
+        } catch (e) { /* ignore */ }
+        this._rendering[key] = false;
+        // 如果渲染期间页码又变了，补一次渲染喵～
+        if (this._pages[key] !== startPage) {
+          this.goToPage(key, this._pages[key]);
+        }
+      })();
+    }
   },
 
   // Shift 区间复选

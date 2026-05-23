@@ -56,7 +56,7 @@ const App = {
     // ESC 关闭弹窗
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
-        for (const name of ['login', 'register', 'detail', 'editEntry']) {
+        for (const name of ['login', 'register', 'detail', 'editEntry', 'changePassword']) {
           const el = document.getElementById(`modal${name.charAt(0).toUpperCase() + name.slice(1)}`);
           if (el && el.classList.contains('active')) { this.closeModal(name); break; }
         }
@@ -142,6 +142,7 @@ const App = {
       nav.innerHTML = `
         <span class="nav-votes">🎫 <strong>${this.voteBalance}</strong> 票</span>
         <span class="nav-user">👤 ${Components.esc(user.username)}</span>
+        <button class="btn btn-outline btn-sm" onclick="App.showModal('changePassword')" style="margin-right:4px">🔑 改密</button>
         <button class="btn btn-outline btn-sm" onclick="App.logout()">退出</button>
       `;
       // 管理员显示管理 tab
@@ -238,6 +239,25 @@ const App = {
       Components.showToast('注册成功，请登录～', 'success');
       this.closeModal('register');
       setTimeout(() => this.showModal('login'), 300);
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  async handleChangePassword(e) {
+    e.preventDefault();
+    const oldPassword = document.getElementById('oldPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    if (newPassword !== confirmPassword) {
+      Components.showToast('两次输入的新密码不一致', 'error');
+      return;
+    }
+    try {
+      await API.changePassword(oldPassword, newPassword);
+      Components.showToast('密码修改成功喵～', 'success');
+      this.closeModal('changePassword');
+      document.getElementById('changePasswordForm').reset();
     } catch (err) {
       Components.showToast(err.message, 'error');
     }

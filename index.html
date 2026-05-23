@@ -334,6 +334,29 @@
     </div>
   </div>
 
+  <!-- ====== 修改密码弹窗 ====== -->
+  <div class="modal-overlay" id="modalChangePassword">
+    <div class="modal">
+      <button class="modal-close" onclick="App.closeModal('changePassword')">&times;</button>
+      <h2 class="modal-title">🔑 修改密码</h2>
+      <form id="changePasswordForm" onsubmit="App.handleChangePassword(event)">
+        <div class="form-group">
+          <label for="oldPassword">旧密码</label>
+          <input type="password" id="oldPassword" placeholder="请输入旧密码" required>
+        </div>
+        <div class="form-group">
+          <label for="newPassword">新密码</label>
+          <input type="password" id="newPassword" placeholder="至少 6 个字符" minlength="6" required>
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">确认新密码</label>
+          <input type="password" id="confirmPassword" placeholder="再次输入新密码" minlength="6" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-full">💾 修改密码</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Toast 容器 -->
   <div class="toast-container" id="toastContainer"></div>
 

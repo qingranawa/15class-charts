@@ -30,6 +30,9 @@ const API = {
   register(username, password) {
     return this.request('/auth/register', { method: 'POST', body: { username, password }, auth: false });
   },
+  changePassword(oldPassword, newPassword) {
+    return this.request('/auth/change-password', { method: 'POST', body: { oldPassword, newPassword } });
+  },
 
   // Entries
   getEntries(params = {}) {
