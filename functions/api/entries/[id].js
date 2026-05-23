@@ -5,9 +5,17 @@ export async function onRequestGet({ request, env, params }) {
   const entry = await env.DB.prepare('SELECT e.*, u.username as submitter FROM entries e LEFT JOIN users u ON e.submitted_by = u.id WHERE e.id = ?').bind(params.id).first();
   if (!entry) return error('条目不存在', 404);
 
-  const votes = await env.DB.prepare('SELECT SUM(value) as total FROM votes WHERE entry_id = ?').bind(params.id).first();
+  const stats = await env.DB.prepare('SELECT COALESCE(SUM(CASE WHEN value = 1 THEN 1 ELSE 0 END), 0) as up_votes, COALESCE(SUM(CASE WHEN value = -1 THEN 1 ELSE 0 END), 0) as down_votes FROM votes WHERE entry_id = ?').bind(params.id).first();
 
-  return json({ ...entry, vote_total: votes.total || 0 });
+  // 当前用户的投票状态
+  const user = await getAuthUser(request, env);
+  let user_vote = 0;
+  if (user) {
+    const vote = await env.DB.prepare('SELECT value FROM votes WHERE entry_id = ? AND user_id = ?').bind(params.id, user.userId).first();
+    if (vote) user_vote = vote.value;
+  }
+
+  return json({ ...entry, up_votes: stats.up_votes, down_votes: stats.down_votes, user_vote });
 }
 
 export async function onRequestDelete({ request, env, params }) {

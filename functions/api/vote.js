@@ -37,12 +37,10 @@ export async function onRequestPost({ request, env }) {
   const entry = await env.DB.prepare('SELECT id FROM entries WHERE id = ?').bind(entry_id).first();
   if (!entry) return error('条目不存在', 404);
 
-  // 获取用户票数信息
   const u = await env.DB.prepare('SELECT vote_balance, last_vote_refill FROM users WHERE id = ?').bind(user.userId).first();
   let balance = u.vote_balance;
   let refill = u.last_vote_refill;
 
-  // 补充每日票数
   if (balance < 1) {
     const days = daysBetween(new Date().toISOString(), refill);
     if (days >= 1) {
@@ -51,15 +49,9 @@ export async function onRequestPost({ request, env }) {
     }
   }
 
-  // 检查是否有已有投票
   const existing = await env.DB.prepare('SELECT id, value FROM votes WHERE entry_id = ? AND user_id = ?').bind(entry_id, user.userId).first();
 
-  const isAdmin = user.role === 'admin';
-
   if (existing) {
-    // 普通用户不能取消投票或改票
-    if (!isAdmin) return error('你已经投过票了，不能取消喵～', 400);
-    // 管理员可以取消/改票（逻辑不变）
     if (existing.value === value) {
       // 取消投票，退款
       await env.DB.prepare('DELETE FROM votes WHERE id = ?').bind(existing.id).run();
@@ -71,19 +63,19 @@ export async function onRequestPost({ request, env }) {
       await env.DB.prepare('UPDATE users SET last_vote_refill = ? WHERE id = ?').bind(refill, user.userId).run();
     }
   } else {
-    // 新投票
-    if (!isAdmin && value !== 1) return error('只能投赞喵～', 400);
     if (balance < 1) return error('今日票数已用完，明天再来喵～', 429);
     balance -= 1;
     await env.DB.prepare('INSERT INTO votes (entry_id, user_id, value) VALUES (?, ?, ?)').bind(entry_id, user.userId, value).run();
     await env.DB.prepare('UPDATE users SET vote_balance = ?, last_vote_refill = ? WHERE id = ?').bind(balance, refill, user.userId).run();
   }
 
-  // 重新计算条目得分
-  const score = await env.DB.prepare('SELECT COALESCE(SUM(value), 0) as total FROM votes WHERE entry_id = ?').bind(entry_id).first();
-  await env.DB.prepare('UPDATE entries SET score = ? WHERE id = ?').bind(score.total, entry_id).run();
+  // 重新计算得分（封顶 0-10 分制）
+  const stats = await env.DB.prepare('SELECT COALESCE(SUM(CASE WHEN value = 1 THEN 1 ELSE 0 END), 0) as up_votes, COALESCE(SUM(CASE WHEN value = -1 THEN 1 ELSE 0 END), 0) as down_votes FROM votes WHERE entry_id = ?').bind(entry_id).first();
+  const rawScore = stats.up_votes - stats.down_votes;
+  const score = Math.max(0, Math.min(10, rawScore));
+  await env.DB.prepare('UPDATE entries SET score = ? WHERE id = ?').bind(score, entry_id).run();
 
   const newVote = existing && existing.value === value ? null : value;
 
-  return json({ score: score.total, vote: newVote, vote_balance: balance });
+  return json({ score, up_votes: stats.up_votes, down_votes: stats.down_votes, vote: newVote, vote_balance: balance });
 }
