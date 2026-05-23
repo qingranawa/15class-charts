@@ -4,6 +4,14 @@ const Auth = {
   _token: null,
   _user: null,
 
+  // 安全解码 base64（兼容服务端 safeBtoa 输出的 UTF-8 字节）
+  _safeAtob(str) {
+    const binary = atob(str);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  },
+
   init() {
     this._token = localStorage.getItem('token');
     try {
@@ -16,7 +24,7 @@ const Auth = {
         let payload = this._token.split('.')[1];
         payload = payload.replace(/-/g, '+').replace(/_/g, '/');
         while (payload.length % 4) payload += '=';
-        const data = JSON.parse(atob(payload));
+        const data = JSON.parse(this._safeAtob(payload));
         if (data.exp < Date.now()) { this.logout(); return; }
         // 用 JWT payload 中权威的 role 更新 user 对象
         if (this._user) {

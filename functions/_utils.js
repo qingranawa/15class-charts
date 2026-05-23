@@ -17,6 +17,21 @@ function base64UrlToBuf(str) {
   return Uint8Array.from(atob(str), c => c.charCodeAt(0));
 }
 
+// btoa/atob 不支持非 ASCII 字符，需要用 UTF-8 字节中转喵～
+function safeBtoa(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function safeAtob(str) {
+  const binary = atob(str);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -57,7 +72,7 @@ export async function verifyPassword(password, stored) {
 export async function signToken(payload, secret) {
   const enc = new TextEncoder();
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body = btoa(JSON.stringify({ ...payload, exp: Date.now() + TOKEN_EXPIRY }));
+  const body = safeBtoa(JSON.stringify({ ...payload, exp: Date.now() + TOKEN_EXPIRY }));
   const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(`${header}.${body}`));
   return `${header}.${body}.${bufToBase64Url(new Uint8Array(sig))}`;
@@ -72,7 +87,7 @@ export async function verifyToken(token, secret) {
     const sig = base64UrlToBuf(parts[2]);
     const valid = await crypto.subtle.verify('HMAC', key, sig, enc.encode(`${parts[0]}.${parts[1]}`));
     if (!valid) return null;
-    const payload = JSON.parse(atob(parts[1]));
+    const payload = JSON.parse(safeAtob(parts[1]));
     if (payload.exp < Date.now()) return null;
     return payload;
   } catch { return null; }
