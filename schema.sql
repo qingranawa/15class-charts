@@ -1,4 +1,4 @@
--- 天津操蛋孩子榜 D1 数据库建表 SQL
+-- 15班排行榜 D1 数据库建表 SQL
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

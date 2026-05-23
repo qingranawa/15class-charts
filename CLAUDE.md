@@ -1,6 +1,5 @@
-# 天津操蛋孩子榜
+# 15班排行榜
 
-记录和展示天津操蛋孩子榜网站。
+记录和展示15班排行榜网站。
 
-- GitHub: [https://github.com/qingranawa/the-fuck-children-of-TJ]
-
+- GitHub: [https://github.com/qingranawa/15class-charts]
