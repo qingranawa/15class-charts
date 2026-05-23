@@ -220,4 +220,38 @@ const Components = {
       Components.showToast('加载投诉列表失败：' + err.message, 'error');
     }
   },
+
+  async renderAdminStaff() {
+    try {
+      const data = await API.adminGetUsers();
+      // 只显示 admin 和 owner
+      const staff = data.users.filter(u => u.role === 'admin' || u.role === 'owner');
+      const tbody = document.querySelector('#adminStaffTable tbody');
+      const currentUser = Auth.getUser();
+      const isOwner = currentUser && currentUser.role === 'owner';
+      tbody.innerHTML = staff.map(u => `
+        <tr>
+          <td>${u.id}</td>
+          <td>${this.esc(u.username)}</td>
+          <td>
+            ${isOwner && u.role !== 'owner' ? `
+              <select onchange="App.adminUpdateUser(${u.id}, 'role', this.value)">
+                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+                <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
+              </select>
+            ` : `<span class="role-badge ${u.role}">${u.role}</span>`}
+          </td>
+          <td>${u.vote_balance}</td>
+          <td>${this.timeAgo(u.created_at)}</td>
+          <td>
+            ${isOwner && u.role !== 'owner' ? `
+              <button class="btn btn-sm btn-outline" onclick="App.adminDeleteUser(${u.id})" style="color:var(--red)">移除</button>
+            ` : u.role === 'owner' ? '<span style="font-size:0.8rem;color:var(--gold)">👑 所有者</span>' : '-'}
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      Components.showToast('加载管理人员列表失败：' + err.message, 'error');
+    }
+  },
 };

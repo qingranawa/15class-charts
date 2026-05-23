@@ -170,6 +170,7 @@
             <button class="admin-tab active" data-admin-tab="users">用户管理</button>
             <button class="admin-tab" data-admin-tab="entries">条目管理</button>
             <button class="admin-tab" data-admin-tab="reports">投诉管理</button>
+            <button class="admin-tab owner-only" data-admin-tab="staff">管理人员</button>
           </div>
           <div class="admin-content active" id="adminUsers">
             <div class="admin-table-wrap">
@@ -191,6 +192,14 @@
             <div class="admin-table-wrap">
               <table class="admin-table" id="adminReportsTable">
                 <thead><tr><th>ID</th><th>条目</th><th>投诉人</th><th>理由</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="admin-content" id="adminStaff">
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="adminStaffTable">
+                <thead><tr><th>ID</th><th>用户名</th><th>角色</th><th>票数</th><th>注册时间</th><th>操作</th></tr></thead>
                 <tbody></tbody>
               </table>
             </div>

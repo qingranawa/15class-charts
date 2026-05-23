@@ -82,14 +82,18 @@ const App = {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('active', t === tab));
         document.querySelectorAll('.admin-content').forEach(c => {
-          const tabMap = { users: 'Users', entries: 'Entries', reports: 'Reports' };
+          const tabMap = { users: 'Users', entries: 'Entries', reports: 'Reports', staff: 'Staff' };
           c.classList.toggle('active', c.id === `admin${tabMap[tab.dataset.adminTab] || tab.dataset.adminTab}`);
         });
         if (tab.dataset.adminTab === 'users') Components.renderAdminUsers();
         else if (tab.dataset.adminTab === 'entries') Components.renderAdminEntries();
         else if (tab.dataset.adminTab === 'reports') Components.renderAdminReports();
+        else if (tab.dataset.adminTab === 'staff') Components.renderAdminStaff();
       });
     });
+
+    // owner 专属 tab 显示控制
+    this.updateStaffOnlyTabs();
   },
 
   // ====== Tab & Sort ======
@@ -131,7 +135,8 @@ const App = {
       `;
       // 管理员显示管理 tab
       const adminTab = document.querySelector('.tab.admin-only');
-      if (adminTab) adminTab.style.display = user.role === 'admin' ? '' : 'none';
+      if (adminTab) adminTab.style.display = (user.role === 'admin' || user.role === 'owner') ? '' : 'none';
+      this.updateStaffOnlyTabs();
     } else {
       nav.innerHTML = `
         <button class="btn btn-outline btn-sm" onclick="App.showModal('login')">登录</button>
@@ -140,6 +145,7 @@ const App = {
       const adminTab = document.querySelector('.tab.admin-only');
       if (adminTab) adminTab.style.display = 'none';
     }
+    this.updateStaffOnlyTabs();
   },
 
   async refreshVoteBalance() {
@@ -161,6 +167,15 @@ const App = {
       card.style.display = 'none';
       hint.style.display = '';
     }
+  },
+
+  // owner 专属功能可见性
+  updateStaffOnlyTabs() {
+    const user = Auth.getUser();
+    const isOwner = user && user.role === 'owner';
+    document.querySelectorAll('.owner-only').forEach(el => {
+      el.style.display = isOwner ? '' : 'none';
+    });
   },
 
   // ====== Modal ======

@@ -449,6 +449,8 @@ a:hover { text-decoration: underline; }
 .admin-table td { color: var(--text); }
 .admin-table .role-badge { font-size: 0.78rem; padding: 2px 10px; border-radius: 20px; font-weight: 500; }
 .admin-table .role-badge.admin { background: var(--gold-bg); color: var(--gold); }
+.admin-table .role-badge.owner { background: rgba(240,192,96,0.15); color: #f0d080; }
+.admin-table .role-badge.unauthorized { background: var(--red-bg); color: var(--red); }
 .admin-table .role-badge.user { background: rgba(255,255,255,0.05); color: var(--text-secondary); }
 .admin-table select, .admin-table input { font-family: inherit; font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
 .admin-table select { cursor: pointer; }
