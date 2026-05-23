@@ -1,6 +1,6 @@
 // GET /api/admin/reports — 管理员获取投诉列表
-import { json } from '../../../_utils.js';
-import { requireStaff } from '../../../_admin.js';
+import { json } from '../../_utils.js';
+import { requireStaff } from '../../_admin.js';
 
 export async function onRequestGet({ request, env }) {
   const auth = await requireStaff(request, env);
