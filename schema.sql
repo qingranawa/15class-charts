@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS entries (
   category TEXT DEFAULT 'other',
   score INTEGER DEFAULT 0,
   submitted_by INTEGER REFERENCES users(id),
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT (datetime('now')),
+  deleted_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS votes (

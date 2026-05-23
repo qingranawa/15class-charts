@@ -87,4 +87,15 @@ const API = {
   adminResolveReport(id, resolution) {
     return this.request(`/admin/reports/${id}`, { method: 'PATCH', body: resolution });
   },
+
+  // Deleted entries (recycle bin)
+  adminGetDeletedEntries() {
+    return this.request('/admin/deleted-entries');
+  },
+  adminRestoreEntry(id) {
+    return this.request(`/admin/deleted-entries/${id}`, { method: 'POST' });
+  },
+  adminPermanentDeleteEntry(id) {
+    return this.request(`/admin/deleted-entries/${id}`, { method: 'DELETE' });
+  },
 };

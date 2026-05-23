@@ -59,6 +59,7 @@
       <div class="tabs">
         <button class="tab active" data-tab="leaderboard">🏆 排行榜</button>
         <button class="tab" data-tab="submit">✍️ 提交新人物</button>
+        <button class="tab login-only" data-tab="myentries" style="display:none">📋 我上传的</button>
         <button class="tab admin-only" data-tab="admin" style="display:none">🛡️ 管理</button>
       </div>
 
@@ -162,20 +163,47 @@
         </div>
       </div>
 
+      <!-- ====== 我上传的视图 ====== -->
+      <div class="tab-content" id="tabMyEntries">
+        <div class="my-entries-panel" id="myEntriesPanel">
+          <h2 class="section-title">📋 我上传的人物</h2>
+          <div class="batch-bar" id="myEntriesBatchBar" style="display:none">
+            <span class="batch-count" id="myEntriesBatchCount">已选 0 项</span>
+            <button class="btn btn-sm btn-outline" onclick="App.batchDeleteMyEntries()" style="color:var(--red)">🗑 批量删除</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="myEntriesTable">
+              <thead><tr><th><input type="checkbox" id="myEntriesCheckAll" onchange="Components.toggleCheckAll('myEntries', this)"></th><th>ID</th><th>名称</th><th>得分</th><th>分类</th><th>时间</th><th>操作</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- ====== 管理视图 ====== -->
       <div class="tab-content" id="tabAdmin">
         <div class="admin-panel" id="adminPanel">
           <h2 class="section-title">🛡️ 管理员面板</h2>
+          <div class="admin-search-bar">
+            <input type="text" id="adminSearchInput" class="search-input" placeholder="搜索用户…" autocomplete="off">
+          </div>
+          <div class="batch-bar" id="adminBatchBar" style="display:none">
+            <span class="batch-count" id="adminBatchCount">已选 0 项</span>
+            <button class="btn btn-sm btn-outline" onclick="App.batchBanUsers('7d')">🔒 封禁7d</button>
+            <button class="btn btn-sm btn-outline" onclick="App.batchUnbanUsers()" style="color:var(--green)">🔓 解封</button>
+            <button class="btn btn-sm btn-outline" onclick="App.batchDeleteUsers()" style="color:var(--red)">🗑 删除</button>
+          </div>
           <div class="admin-tabs">
             <button class="admin-tab active" data-admin-tab="users">用户管理</button>
             <button class="admin-tab" data-admin-tab="entries">条目管理</button>
             <button class="admin-tab" data-admin-tab="reports">投诉管理</button>
             <button class="admin-tab owner-only" data-admin-tab="staff">管理人员</button>
+            <button class="admin-tab" data-admin-tab="deleted">删除的内容</button>
           </div>
           <div class="admin-content active" id="adminUsers">
             <div class="admin-table-wrap">
               <table class="admin-table" id="adminUsersTable">
-                <thead><tr><th>ID</th><th>用户名</th><th>角色</th><th>票数</th><th>注册时间</th><th>操作</th></tr></thead>
+                <thead><tr><th><input type="checkbox" id="adminUsersCheckAll" onchange="Components.toggleCheckAll('adminUsers', this)"></th><th>ID</th><th>用户名</th><th>角色</th><th>票数</th><th>注册时间</th><th>操作</th></tr></thead>
                 <tbody></tbody>
               </table>
             </div>
@@ -199,7 +227,15 @@
           <div class="admin-content" id="adminStaff">
             <div class="admin-table-wrap">
               <table class="admin-table" id="adminStaffTable">
-                <thead><tr><th>ID</th><th>用户名</th><th>角色</th><th>票数</th><th>注册时间</th><th>操作</th></tr></thead>
+                <thead><tr><th><input type="checkbox" id="adminStaffCheckAll" onchange="Components.toggleCheckAll('adminStaff', this)"></th><th>ID</th><th>用户名</th><th>角色</th><th>票数</th><th>注册时间</th><th>操作</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="admin-content" id="adminDeleted">
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="adminDeletedTable">
+                <thead><tr><th>ID</th><th>名称</th><th>得分</th><th>提交者</th><th>删除时间</th><th>操作</th></tr></thead>
                 <tbody></tbody>
               </table>
             </div>

@@ -82,15 +82,24 @@ const App = {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('active', t === tab));
         document.querySelectorAll('.admin-content').forEach(c => {
-          const tabMap = { users: 'Users', entries: 'Entries', reports: 'Reports', staff: 'Staff' };
+          const tabMap = { users: 'Users', entries: 'Entries', reports: 'Reports', staff: 'Staff', deleted: 'Deleted' };
           c.classList.toggle('active', c.id === `admin${tabMap[tab.dataset.adminTab] || tab.dataset.adminTab}`);
         });
         if (tab.dataset.adminTab === 'users') Components.renderAdminUsers();
         else if (tab.dataset.adminTab === 'entries') Components.renderAdminEntries();
         else if (tab.dataset.adminTab === 'reports') Components.renderAdminReports();
         else if (tab.dataset.adminTab === 'staff') Components.renderAdminStaff();
+        else if (tab.dataset.adminTab === 'deleted') Components.renderDeletedEntries();
       });
     });
+
+    // 管理面板搜索用户
+    const adminSearch = document.getElementById('adminSearchInput');
+    if (adminSearch) {
+      adminSearch.addEventListener('input', () => {
+        Components.renderAdminUsers(adminSearch.value.trim());
+      });
+    }
 
     // owner 专属 tab 显示控制
     this.updateStaffOnlyTabs();
@@ -100,10 +109,11 @@ const App = {
   switchTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.querySelectorAll('.tab-content').forEach(c => {
-      const idMap = { leaderboard: 'tabLeaderboard', submit: 'tabSubmit', admin: 'tabAdmin' };
+      const idMap = { leaderboard: 'tabLeaderboard', submit: 'tabSubmit', myentries: 'tabMyEntries', admin: 'tabAdmin' };
       c.classList.toggle('active', c.id === idMap[tab]);
     });
     this.checkSubmitAccess();
+    if (tab === 'myentries') Components.renderMyEntries();
     if (tab === 'admin') Components.renderAdminUsers();
   },
 
@@ -136,6 +146,9 @@ const App = {
       // 管理员显示管理 tab
       const adminTab = document.querySelector('.tab.admin-only');
       if (adminTab) adminTab.style.display = (user.role === 'admin' || user.role === 'owner') ? '' : 'none';
+      // 登录用户显示「我上传的」tab
+      const loginTabs = document.querySelectorAll('.tab.login-only');
+      loginTabs.forEach(t => { t.style.display = ''; });
       this.updateStaffOnlyTabs();
     } else {
       nav.innerHTML = `
@@ -144,6 +157,8 @@ const App = {
       `;
       const adminTab = document.querySelector('.tab.admin-only');
       if (adminTab) adminTab.style.display = 'none';
+      const loginTabs = document.querySelectorAll('.tab.login-only');
+      loginTabs.forEach(t => { t.style.display = 'none'; });
     }
     this.updateStaffOnlyTabs();
   },
@@ -564,6 +579,13 @@ const App = {
   },
 
   // ====== Report Resolution ======
+  async handleReportEdit(entryId, reportId) {
+    // 自动将投诉标记为已处理，然后打开编辑
+    try { await API.adminResolveReport(reportId, { status: 'resolved', resolution: '已修改内容' }); } catch {}
+    Components.showToast('投诉已自动标记为已处理', 'info');
+    this.showEditEntry(entryId);
+  },
+
   async handleReportDelete(entryId, reportId) {
     if (!confirm('确定下架删除该条目吗？')) return;
     try {
@@ -586,6 +608,80 @@ const App = {
     } catch (err) {
       Components.showToast(err.message, 'error');
     }
+  },
+
+  // ====== Recycle Bin ======
+  async restoreEntry(id) {
+    if (!confirm('确定恢复该条目吗？')) return;
+    try {
+      await API.adminRestoreEntry(id);
+      Components.showToast('条目已恢复', 'success');
+      Components.renderDeletedEntries();
+      this.loadLeaderboard();
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  async permanentDeleteEntry(id) {
+    if (!confirm('永久删除后无法恢复，确定吗？')) return;
+    try {
+      await API.adminPermanentDeleteEntry(id);
+      Components.showToast('已永久删除', 'success');
+      Components.renderDeletedEntries();
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  // ====== Batch Operations ======
+  async batchBanUsers(duration) {
+    const ids = Components.getCheckedIds('adminUsers');
+    if (ids.length === 0) { Components.showToast('请先选择用户', 'error'); return; }
+    if (!confirm(`确定批量封禁 ${ids.length} 个用户 ${duration} 吗？`)) return;
+    try {
+      for (const id of ids) { await API.adminBanUser(id, duration); }
+      Components.showToast(`已封禁 ${ids.length} 个用户`, 'success');
+      Components.renderAdminUsers();
+      document.getElementById('adminUsersCheckAll').checked = false;
+    } catch (err) { Components.showToast(err.message, 'error'); }
+  },
+
+  async batchUnbanUsers() {
+    const ids = Components.getCheckedIds('adminUsers');
+    if (ids.length === 0) { Components.showToast('请先选择用户', 'error'); return; }
+    if (!confirm(`确定批量解封 ${ids.length} 个用户吗？`)) return;
+    try {
+      for (const id of ids) { await API.adminUnbanUser(id); }
+      Components.showToast(`已解封 ${ids.length} 个用户`, 'success');
+      Components.renderAdminUsers();
+      document.getElementById('adminUsersCheckAll').checked = false;
+    } catch (err) { Components.showToast(err.message, 'error'); }
+  },
+
+  async batchDeleteUsers() {
+    const ids = Components.getCheckedIds('adminUsers');
+    if (ids.length === 0) { Components.showToast('请先选择用户', 'error'); return; }
+    if (!confirm(`确定删除 ${ids.length} 个用户及其所有数据吗？此操作不可撤销！`)) return;
+    try {
+      for (const id of ids) { await API.adminDeleteUser(id); }
+      Components.showToast(`已删除 ${ids.length} 个用户`, 'success');
+      Components.renderAdminUsers();
+      document.getElementById('adminUsersCheckAll').checked = false;
+    } catch (err) { Components.showToast(err.message, 'error'); }
+  },
+
+  async batchDeleteMyEntries() {
+    const ids = Components.getCheckedIds('myEntries');
+    if (ids.length === 0) { Components.showToast('请先选择条目', 'error'); return; }
+    if (!confirm(`确定删除 ${ids.length} 个条目吗？`)) return;
+    try {
+      for (const id of ids) { await API.deleteEntry(id); }
+      Components.showToast(`已删除 ${ids.length} 个条目`, 'success');
+      Components.renderMyEntries();
+      this.loadLeaderboard();
+      document.getElementById('myEntriesCheckAll').checked = false;
+    } catch (err) { Components.showToast(err.message, 'error'); }
   },
 };
 

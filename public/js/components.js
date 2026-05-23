@@ -27,24 +27,24 @@ const Components = {
     return new Date(dateStr).toLocaleDateString('zh-CN');
   },
 
-  // 封禁按钮组（复用）
+  // 封禁按钮组（折叠式）
   banButtons(userId, showUnban = false) {
     const durations = [
-      { label: '5h', dur: '5h', cls: '' },
-      { label: '1d', dur: '1d', cls: '' },
-      { label: '3d', dur: '3d', cls: '' },
-      { label: '7d', dur: '7d', cls: '' },
-      { label: '14d', dur: '14d', cls: '' },
-      { label: '1m', dur: '1m', cls: '' },
-      { label: '50y', dur: '50y', cls: 'style="color:var(--red)"' },
+      { label: '5h', dur: '5h' },
+      { label: '1d', dur: '1d' },
+      { label: '3d', dur: '3d' },
+      { label: '7d', dur: '7d' },
+      { label: '14d', dur: '14d' },
+      { label: '1m', dur: '1m' },
+      { label: '50y', dur: '50y', red: true },
     ];
     const banBtns = durations.map(d =>
-      `<button class="btn btn-sm btn-outline" ${d.cls} onclick="event.stopPropagation(); App.banUser(${userId}, '${d.dur}')" title="封禁 ${d.label}">${d.label}</button>`
+      `<button class="btn btn-sm btn-outline" ${d.red ? 'style="color:var(--red)"' : ''} onclick="event.stopPropagation(); App.banUser(${userId}, '${d.dur}')">${d.label}</button>`
     ).join('');
     const unbanBtn = showUnban
       ? `<button class="btn btn-sm btn-outline" style="color:var(--green)" onclick="event.stopPropagation(); App.unbanUser(${userId})">解封</button>`
       : '';
-    return `<span class="ban-btn-group">${banBtns}${unbanBtn}</span>`;
+    return `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); App.toggleBanBtns(this)">🔒 封禁</button><span class="ban-btn-inline" style="display:none">${banBtns}${unbanBtn}</span>`;
   },
 
   renderPodium(entries) {
@@ -125,6 +125,26 @@ const Components = {
     return div.innerHTML;
   },
 
+  toggleCheckAll(group, masterCheckbox) {
+    const checked = masterCheckbox.checked;
+    document.querySelectorAll(`.check-${group}`).forEach(cb => { cb.checked = checked; });
+    this.updateBatchBar(group);
+  },
+
+  updateBatchBar(group) {
+    const checked = document.querySelectorAll(`.check-${group}:checked`).length;
+    const barId = group === 'adminUsers' ? 'adminBatchBar' : 'myEntriesBatchBar';
+    const countId = group === 'adminUsers' ? 'adminBatchCount' : 'myEntriesBatchCount';
+    const bar = document.getElementById(barId);
+    const count = document.getElementById(countId);
+    if (bar) bar.style.display = checked > 0 ? '' : 'none';
+    if (count) count.textContent = `已选 ${checked} 项`;
+  },
+
+  getCheckedIds(group) {
+    return [...document.querySelectorAll(`.check-${group}:checked`)].map(cb => parseInt(cb.value));
+  },
+
   scoreBar(score, cls = '', entryId = '') {
     const pct = Math.round(Math.max(0, Math.min(10, score)) / 10 * 100);
     const attr = entryId ? ` data-entry-score="${entryId}"` : '';
@@ -160,17 +180,23 @@ const Components = {
     `;
   },
 
-  async renderAdminUsers() {
+  async renderAdminUsers(filterText = '') {
     try {
       const data = await API.adminGetUsers();
       const tbody = document.querySelector('#adminUsersTable tbody');
       const currentUser = Auth.getUser();
       const isOwner = currentUser && currentUser.role === 'owner';
-      tbody.innerHTML = data.users.map(u => {
+      let users = data.users;
+      if (filterText) {
+        const f = filterText.toLowerCase();
+        users = users.filter(u => u.username.toLowerCase().includes(f) || String(u.id).includes(f));
+      }
+      tbody.innerHTML = users.map(u => {
         const isTargetOwner = u.role === 'owner';
         const canManage = isOwner || (!isTargetOwner && u.id !== currentUser.id);
         return `
         <tr>
+          <td><input type="checkbox" class="check-adminUsers" value="${u.id}" onchange="Components.updateBatchBar('adminUsers')"></td>
           <td>${u.id}</td>
           <td>${this.esc(u.username)}</td>
           <td>
@@ -243,7 +269,7 @@ const Components = {
           <td>${this.timeAgo(r.created_at)}</td>
           <td style="white-space:nowrap">
             ${isPending ? `
-              <button class="btn btn-sm btn-outline" onclick="App.showEditEntry(${r.entry_id})" style="margin-right:4px">✏️ 修改</button>
+              <button class="btn btn-sm btn-outline" onclick="App.handleReportEdit(${r.entry_id}, ${r.id})" style="margin-right:4px">✏️ 修改</button>
               <button class="btn btn-sm btn-outline" onclick="App.handleReportDelete(${r.entry_id}, ${r.id})" style="color:var(--red);margin-right:4px">🗑 下架</button>
               <button class="btn btn-sm btn-outline" onclick="App.resolveReport(${r.id}, 'dismissed')" style="margin-right:4px">⛔ 驳回</button>
               ${submitterId ? `
@@ -268,6 +294,7 @@ const Components = {
       const isOwner = currentUser && currentUser.role === 'owner';
       tbody.innerHTML = staff.map(u => `
         <tr>
+          <td><input type="checkbox" class="check-adminStaff" value="${u.id}" onchange="Components.updateBatchBar('adminStaff')"></td>
           <td>${u.id}</td>
           <td>${this.esc(u.username)}</td>
           <td>
@@ -281,16 +308,70 @@ const Components = {
           </td>
           <td>${u.vote_balance}</td>
           <td>${this.timeAgo(u.created_at)}</td>
-          <td style="white-space:nowrap">
+          <td>
             ${isOwner && u.role !== 'owner' ? `
-              ${this.banButtons(u.id, u.role === 'unauthorized')}
-              <button class="btn btn-sm btn-outline" onclick="App.adminDeleteUser(${u.id})" style="color:var(--red);margin-left:4px">🗑</button>
+              <button class="btn btn-sm btn-outline" onclick="App.adminDeleteUser(${u.id})" style="color:var(--red)">🗑</button>
             ` : u.role === 'owner' ? '<span style="font-size:0.8rem;color:var(--gold)">👑 所有者</span>' : '-'}
           </td>
         </tr>
       `).join('');
     } catch (err) {
       Components.showToast('加载管理人员列表失败：' + err.message, 'error');
+    }
+  },
+
+  async renderDeletedEntries() {
+    try {
+      const data = await API.adminGetDeletedEntries();
+      const tbody = document.querySelector('#adminDeletedTable tbody');
+      tbody.innerHTML = data.entries.map(e => `
+        <tr>
+          <td>${e.id}</td>
+          <td>${this.esc(e.name)}</td>
+          <td>${e.score}/10</td>
+          <td>${this.esc(e.submitter || '-')}</td>
+          <td>${this.timeAgo(e.deleted_at)}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-sm btn-outline" onclick="App.restoreEntry(${e.id})" style="color:var(--green);margin-right:4px">🔄 恢复</button>
+            <button class="btn btn-sm btn-outline" onclick="App.permanentDeleteEntry(${e.id})" style="color:var(--red)">🔥 永久删除</button>
+          </td>
+        </tr>
+      `).join('');
+      if (data.entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">回收站为空喵～</td></tr>';
+      }
+    } catch (err) {
+      Components.showToast('加载已删条目失败：' + err.message, 'error');
+    }
+  },
+
+  async renderMyEntries() {
+    try {
+      const data = await API.getEntries({ limit: 100, sort: 'newest' });
+      const userId = Auth.getUser()?.id;
+      const myEntries = data.entries.filter(e => e.submitted_by === userId);
+      const tbody = document.querySelector('#myEntriesTable tbody');
+      const user = Auth.getUser();
+      const canEdit = user && user.role !== 'unauthorized';
+      tbody.innerHTML = myEntries.map(e => `
+        <tr>
+          <td><input type="checkbox" class="check-myEntries" value="${e.id}" onchange="Components.updateBatchBar('myEntries')"></td>
+          <td>${e.id}</td>
+          <td>${this.esc(e.name)}</td>
+          <td>${e.score}/10</td>
+          <td>${this.categoryLabel(e.category)}</td>
+          <td>${this.timeAgo(e.created_at)}</td>
+          <td style="white-space:nowrap">
+            ${canEdit ? `<button class="btn btn-sm btn-outline" onclick="App.showEditEntry(${e.id})" style="margin-right:4px">编辑</button>` : ''}
+            <button class="btn btn-sm btn-outline" onclick="App.deleteEntry(${e.id})" style="color:var(--red)">删除</button>
+          </td>
+        </tr>
+      `).join('');
+      if (myEntries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">还没有上传过人物喵～</td></tr>';
+      }
+    } catch (err) {
+      Components.showToast('加载失败：' + err.message, 'error');
     }
   },
 };

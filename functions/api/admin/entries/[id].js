@@ -51,9 +51,9 @@ export async function onRequestDelete({ request, env, params }) {
   const auth = await requireStaff(request, env);
   if (auth.error) return auth.error;
 
-  const entry = await env.DB.prepare('SELECT id FROM entries WHERE id = ?').bind(params.id).first();
+  const entry = await env.DB.prepare('SELECT id FROM entries WHERE id = ? AND deleted_at IS NULL').bind(params.id).first();
   if (!entry) return error('条目不存在', 404);
 
-  await env.DB.prepare('DELETE FROM entries WHERE id = ?').bind(params.id).run();
+  await env.DB.prepare("UPDATE entries SET deleted_at = datetime('now') WHERE id = ?").bind(params.id).run();
   return json({ success: true });
 }

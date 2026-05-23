@@ -14,10 +14,10 @@ export async function onRequestGet({ request, env }) {
 
   const user = await getAuthUser(request, env);
 
-  let whereClause = '';
+  let whereClause = 'WHERE e.deleted_at IS NULL';
   const whereParams = [];
   if (search) {
-    whereClause = 'WHERE (e.name LIKE ? OR e.description LIKE ?)';
+    whereClause += ' AND (e.name LIKE ? OR e.description LIKE ?)';
     whereParams.push(`%${search}%`, `%${search}%`);
   }
 

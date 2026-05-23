@@ -461,6 +461,17 @@ a:hover { text-decoration: underline; }
 .ban-btn-group .btn-sm { padding: 3px 7px; font-size: 0.72rem; border-radius: 4px; }
 .ban-btn-inline { display: none; flex-wrap: wrap; gap: 2px; }
 
+/* ====== Batch Bar ====== */
+.batch-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 14px; background: var(--gold-bg); border: 1px solid var(--gold-dim);
+  border-radius: 8px; margin-bottom: 12px; animation: fadeIn 0.2s ease;
+}
+.batch-count { font-size: 0.85rem; color: var(--gold); font-weight: 600; margin-right: 8px; }
+
+/* ====== Admin Search ====== */
+.admin-search-bar { margin-bottom: 16px; }
+
 /* ====== Footer Disclaimer ====== */
 .footer-disclaimer { font-size: 0.75rem; margin-top: 8px; color: var(--text-muted); opacity: 0.7; }
 
