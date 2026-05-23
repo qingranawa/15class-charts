@@ -171,6 +171,7 @@ const Components = {
           <td>${this.esc(e.submitter || '-')}</td>
           <td>${this.timeAgo(e.created_at)}</td>
           <td>
+            <button class="btn btn-sm btn-outline" onclick="App.showEditEntry(${e.id})" style="margin-right:4px">编辑</button>
             <button class="btn btn-sm btn-outline" onclick="App.adminDeleteEntry(${e.id})" style="color:var(--red)">删除</button>
           </td>
         </tr>

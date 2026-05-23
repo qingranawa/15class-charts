@@ -39,6 +39,10 @@ const App = {
     // 注册表单
     document.getElementById('registerForm').addEventListener('submit', e => this.handleRegister(e));
 
+    // 编辑条目表单
+    const editEntryForm = document.getElementById('editEntryForm');
+    if (editEntryForm) editEntryForm.addEventListener('submit', e => this.handleEditEntry(e));
+
     // 弹窗关闭（点遮罩）
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', e => {
@@ -49,7 +53,7 @@ const App = {
     // ESC 关闭弹窗
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
-        for (const name of ['login', 'register', 'detail']) {
+        for (const name of ['login', 'register', 'detail', 'editEntry']) {
           const el = document.getElementById(`modal${name.charAt(0).toUpperCase() + name.slice(1)}`);
           if (el && el.classList.contains('active')) { this.closeModal(name); break; }
         }
@@ -358,6 +362,40 @@ const App = {
     try {
       await API.adminDeleteEntry(id);
       Components.showToast('条目已删除', 'success');
+      Components.renderAdminEntries();
+      this.loadLeaderboard();
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  // ====== Admin Edit Entry ======
+  async showEditEntry(id) {
+    try {
+      const entry = await API.getEntry(id);
+      document.getElementById('editEntryId').value = entry.id;
+      document.getElementById('editEntryName').value = entry.name;
+      document.getElementById('editEntryCategory').value = entry.category;
+      document.getElementById('editEntryDesc').value = entry.description;
+      document.getElementById('editEntryScore').value = entry.score;
+      this.showModal('editEntry');
+    } catch (err) {
+      Components.showToast('加载条目信息失败：' + err.message, 'error');
+    }
+  },
+
+  async handleEditEntry(e) {
+    e.preventDefault();
+    const id = document.getElementById('editEntryId').value;
+    const name = document.getElementById('editEntryName').value.trim();
+    const category = document.getElementById('editEntryCategory').value;
+    const description = document.getElementById('editEntryDesc').value.trim();
+    const score = parseInt(document.getElementById('editEntryScore').value);
+
+    try {
+      await API.adminUpdateEntry(id, { name, category, description, score });
+      Components.showToast('条目已更新喵～', 'success');
+      this.closeModal('editEntry');
       Components.renderAdminEntries();
       this.loadLeaderboard();
     } catch (err) {

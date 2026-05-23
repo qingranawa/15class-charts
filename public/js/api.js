@@ -67,4 +67,7 @@ const API = {
   adminDeleteEntry(id) {
     return this.request(`/admin/entries/${id}`, { method: 'DELETE' });
   },
+  adminUpdateEntry(id, data) {
+    return this.request(`/admin/entries/${id}`, { method: 'PATCH', body: data });
+  },
 };

@@ -368,6 +368,9 @@ a:hover { text-decoration: underline; }
 .detail-votes { display: flex; align-items: center; justify-content: center; gap: 16px; }
 .detail-votes .btn-vote { width: 48px; height: 48px; font-size: 1.3rem; border-radius: 12px; }
 
+/* ====== Edit Entry Modal ====== */
+.modal-edit-entry { max-width: 560px; }
+
 /* ====== Admin Panel ====== */
 .admin-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; }
 .admin-tabs { display: flex; gap: 4px; margin: 20px 0; background: var(--bg-secondary); padding: 4px; border-radius: 8px; border: 1px solid var(--border); }

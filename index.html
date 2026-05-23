@@ -211,6 +211,40 @@
     </div>
   </div>
 
+  <!-- ====== 编辑条目弹窗（管理员） ====== -->
+  <div class="modal-overlay" id="modalEditEntry">
+    <div class="modal modal-edit-entry">
+      <button class="modal-close" onclick="App.closeModal('editEntry')">&times;</button>
+      <h2 class="modal-title">✏️ 编辑条目</h2>
+      <form id="editEntryForm">
+        <input type="hidden" id="editEntryId">
+        <div class="form-group">
+          <label for="editEntryName">名称</label>
+          <input type="text" id="editEntryName" maxlength="50" required>
+        </div>
+        <div class="form-group">
+          <label for="editEntryCategory">分类</label>
+          <select id="editEntryCategory">
+            <option value="classmate">同学</option>
+            <option value="colleague">同事</option>
+            <option value="stranger">路人</option>
+            <option value="family">家人</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editEntryDesc">描述</label>
+          <textarea id="editEntryDesc" maxlength="2000" rows="4" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="editEntryScore">票数（直接修改数值）</label>
+          <input type="number" id="editEntryScore" min="0" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-full">💾 保存修改</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Toast 容器 -->
   <div class="toast-container" id="toastContainer"></div>
 
