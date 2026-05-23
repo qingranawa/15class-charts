@@ -198,11 +198,33 @@ a:hover { text-decoration: underline; }
 
 .podium-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .podium-desc { font-size: 0.8rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 10px; }
-.podium-score {
-  display: inline-block; padding: 3px 14px; border-radius: 20px;
-  font-size: 0.85rem; font-weight: 700;
-  background: var(--gold-bg); color: var(--gold);
+
+/* ====== Score Progress Bar ====== */
+.score-bar {
+  height: 8px; background: rgba(255,255,255,0.06);
+  border-radius: 4px; overflow: hidden;
+  position: relative;
 }
+.score-bar-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 0.4s ease;
+  background: linear-gradient(90deg, var(--red), #e08030 40%, var(--gold) 70%, var(--green));
+}
+.score-bar-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
+.score-bar-num {
+  font-size: 0.78rem; font-weight: 700; color: var(--gold);
+  min-width: 36px; text-align: right;
+}
+.podium .score-bar-wrap { justify-content: center; margin-top: 2px; }
+.podium .score-bar { width: 80px; }
+.entry-card .score-bar { width: 60px; }
+
+.detail-score-bar { width: 200px; margin: 0 auto; }
+.detail-score-bar .score-bar { height: 12px; border-radius: 6px; }
+.detail-score-bar .score-bar-fill { border-radius: 6px; }
+.detail-score-bar .score-bar-num { font-size: 1rem; }
 
 /* ====== Entry Cards ====== */
 .leaderboard-list { display: flex; flex-direction: column; gap: 10px; }

@@ -37,7 +37,7 @@ const Components = {
         <div class="podium-rank">${this.rankEmoji(i + 1)}</div>
         <div class="podium-name">${this.esc(e.name)}</div>
         <div class="podium-desc">${this.esc(e.description)}</div>
-        <span class="podium-score">${e.score}/10 分</span>
+        ${this.scoreBar(e.score)}
       </div>
     `).join('');
   },
@@ -62,7 +62,7 @@ const Components = {
           </div>
           <div class="entry-votes" onclick="event.stopPropagation()">
             <button class="btn-vote ${e.user_vote === 1 ? 'active-up' : ''}" onclick="App.vote(${e.id}, 1)" title="赞">▲</button>
-            <span class="entry-score-display">${e.score}/10</span>
+            ${this.scoreBar(e.score)}
             <button class="btn-vote ${e.user_vote === -1 ? 'active-down' : ''}" onclick="App.vote(${e.id}, -1)" title="踩">▼</button>
           </div>
           ${user && e.submitted_by === user.id ? `
@@ -105,6 +105,11 @@ const Components = {
     return div.innerHTML;
   },
 
+  scoreBar(score, cls = '') {
+    const pct = Math.round(Math.max(0, Math.min(10, score)) / 10 * 100);
+    return `<span class="score-bar-wrap ${cls}"><span class="score-bar"><span class="score-bar-fill" style="width:${pct}%"></span></span><span class="score-bar-num">${score}/10</span></span>`;
+  },
+
   renderDetail(entry) {
     const ct = document.getElementById('detailContent');
     ct.innerHTML = `
@@ -112,7 +117,7 @@ const Components = {
         <div class="detail-name">${this.esc(entry.name)}</div>
         <span class="detail-category">${this.categoryLabel(entry.category)}</span>
       </div>
-      <div class="detail-score-big">${entry.score} <span style="font-size:1rem;color:var(--text-secondary)">/ 10 分</span></div>
+      ${this.scoreBar(entry.score, 'detail-score-bar')}
       <div class="detail-vote-stats">
         <span style="color:var(--green)">👍 ${entry.up_votes || 0} 赞</span>
         <span style="color:var(--red)">👎 ${entry.down_votes || 0} 踩</span>
