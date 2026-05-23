@@ -237,7 +237,7 @@ const Components = {
         提交者：${this.esc(entry.submitter || '未知')} · ${this.timeAgo(entry.created_at)}
       </div>
       <div class="detail-actions">
-        ${user ? `<button class="btn btn-outline btn-sm" onclick="App.reportEntry(${entry.id})">🚩 投诉</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="App.reportEntry(${entry.id})">🚩 投诉</button>
         ${isStaff ? `<button class="btn btn-outline btn-sm" onclick="App.manageSubmitter(${entry.id})" style="margin-left:8px">👤 管理提交者</button>` : ''}
       </div>
     `;

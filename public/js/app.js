@@ -526,6 +526,7 @@ const App = {
   async reportEntry(entryId) {
     if (!Auth.isLoggedIn()) {
       Components.showToast('请先登录喵～', 'error');
+      this.showModal('login');
       return;
     }
     const reason = prompt('请输入投诉理由（如内容不当、侵犯隐私等）：');
