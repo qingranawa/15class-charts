@@ -9,11 +9,21 @@ const Auth = {
     try {
       this._user = JSON.parse(localStorage.getItem('user') || 'null');
     } catch { this._user = null; }
-    // 验证 token 是否过期
-    if (this._token && this._user) {
+    // 验证 token 是否过期，同时从 JWT payload 提取最新 role（防止 localStorage 里的 user 信息过时）
+    if (this._token) {
       try {
-        const payload = JSON.parse(atob(this._token.split('.')[1]));
-        if (payload.exp < Date.now()) this.logout();
+        // 兼容 base64url：替换 URL-safe 字符后再用 atob
+        let payload = this._token.split('.')[1];
+        payload = payload.replace(/-/g, '+').replace(/_/g, '/');
+        while (payload.length % 4) payload += '=';
+        const data = JSON.parse(atob(payload));
+        if (data.exp < Date.now()) { this.logout(); return; }
+        // 用 JWT payload 中权威的 role 更新 user 对象
+        if (this._user) {
+          this._user.role = data.role;
+        } else {
+          this._user = { id: data.userId, username: data.username, role: data.role };
+        }
       } catch { this.logout(); }
     }
   },
