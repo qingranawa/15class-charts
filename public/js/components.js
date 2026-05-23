@@ -45,9 +45,11 @@ const Components = {
   renderList(entries, startRank) {
     const list = document.getElementById('leaderboardList');
     const user = Auth.getUser();
+    const isAdmin = user && user.role === 'admin';
 
     const html = entries.map((e, i) => {
       const rank = startRank + i;
+      const canVote = !e.user_vote || isAdmin; // 未投过或管理员可操作
       return `
         <div class="entry-card" style="animation-delay:${i * 0.04}s" onclick="App.showDetail(${e.id})">
           <div class="entry-rank-num">${rank <= 3 ? this.rankEmoji(rank) : '#' + rank}</div>
@@ -61,13 +63,22 @@ const Components = {
             </div>
           </div>
           <div class="entry-votes" onclick="event.stopPropagation()">
-            <button class="btn-vote ${e.user_vote === 1 ? 'active-up' : ''}" onclick="App.vote(${e.id}, 1)" title="赞">
-              ▲
-            </button>
-            <span class="entry-score-display">${e.score}</span>
-            <button class="btn-vote ${e.user_vote === -1 ? 'active-down' : ''}" onclick="App.vote(${e.id}, -1)" title="踩">
-              ▼
-            </button>
+            ${canVote ? `
+              <button class="btn-vote ${e.user_vote === 1 ? 'active-up' : ''}" onclick="App.vote(${e.id}, 1)" title="赞">
+                ▲
+              </button>
+              <span class="entry-score-display">${e.score}</span>
+              ${isAdmin ? `
+                <button class="btn-vote ${e.user_vote === -1 ? 'active-down' : ''}" onclick="App.vote(${e.id}, -1)" title="踩">
+                  ▼
+                </button>
+              ` : ''}
+            ` : `
+              <span class="entry-score-display">${e.score}</span>
+              <span style="font-size:0.72rem;color:${e.user_vote === 1 ? 'var(--green)' : 'var(--red)'}">
+                ${e.user_vote === 1 ? '已赞' : '已踩'}
+              </span>
+            `}
           </div>
           ${user && e.submitted_by === user.id ? `
             <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); App.deleteEntry(${e.id})" title="删除">🗑</button>
@@ -111,16 +122,28 @@ const Components = {
 
   renderDetail(entry) {
     const ct = document.getElementById('detailContent');
+    const user = Auth.getUser();
+    const isAdmin = user && user.role === 'admin';
+    const canVote = !entry.user_vote || (isAdmin);
+
     ct.innerHTML = `
       <div class="detail-header">
         <div class="detail-name">${this.esc(entry.name)}</div>
         <span class="detail-category">${this.categoryLabel(entry.category)}</span>
       </div>
       <div class="detail-score-big">${entry.score} 票</div>
-      <div class="detail-votes">
-        <button class="btn-vote ${entry.user_vote === 1 ? 'active-up' : ''}" onclick="App.voteFromDetail(${entry.id}, 1)">▲</button>
-        <button class="btn-vote ${entry.user_vote === -1 ? 'active-down' : ''}" onclick="App.voteFromDetail(${entry.id}, -1)">▼</button>
-      </div>
+      ${canVote ? `
+        <div class="detail-votes">
+          <button class="btn-vote ${entry.user_vote === 1 ? 'active-up' : ''}" onclick="App.voteFromDetail(${entry.id}, 1)">▲</button>
+          ${isAdmin ? `<button class="btn-vote ${entry.user_vote === -1 ? 'active-down' : ''}" onclick="App.voteFromDetail(${entry.id}, -1)">▼</button>` : ''}
+        </div>
+      ` : `
+        <div class="detail-votes">
+          <span style="font-size:0.9rem;color:${entry.user_vote === 1 ? 'var(--green)' : 'var(--red)'}">
+            ${entry.user_vote === 1 ? '👍 已赞' : '👎 已踩'}
+          </span>
+        </div>
+      `}
       <div class="detail-desc">${this.esc(entry.description)}</div>
       <div class="detail-meta">
         提交者：${this.esc(entry.submitter || '未知')} · ${this.timeAgo(entry.created_at)}
