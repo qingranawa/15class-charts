@@ -201,11 +201,13 @@ a:hover { text-decoration: underline; }
 
 /* ====== Score Progress Bar ====== */
 .score-bar {
+  display: inline-block; vertical-align: middle;
   height: 8px; background: rgba(255,255,255,0.06);
   border-radius: 4px; overflow: hidden;
   position: relative;
 }
 .score-bar-fill {
+  display: block;
   height: 100%; border-radius: 4px;
   transition: width 0.4s ease;
   background: linear-gradient(90deg, var(--red), #e08030 40%, var(--gold) 70%, var(--green));
