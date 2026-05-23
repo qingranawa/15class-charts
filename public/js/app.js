@@ -97,6 +97,7 @@ const App = {
     const adminSearch = document.getElementById('adminSearchInput');
     if (adminSearch) {
       adminSearch.addEventListener('input', () => {
+        Components._pages.adminUsers = 1;
         Components.renderAdminUsers(adminSearch.value.trim());
       });
     }

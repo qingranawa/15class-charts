@@ -1,6 +1,9 @@
 // public/js/components.js — UI 组件渲染
 
 const Components = {
+  _pages: {},
+  _lastCheckbox: null,
+
   categoryLabel(cat) {
     const map = { classmate: '同学', colleague: '同事', stranger: '路人', family: '家人', other: '其他' };
     return map[cat] || cat;
@@ -145,6 +148,56 @@ const Components = {
     return [...document.querySelectorAll(`.check-${group}:checked`)].map(cb => parseInt(cb.value));
   },
 
+  // 分页：每页 20 行
+  paginateData(data, key) {
+    const page = this._pages[key] || 1;
+    const start = (page - 1) * 20;
+    return { pageData: data.slice(start, start + 20), page, totalPages: Math.ceil(data.length / 20) };
+  },
+
+  renderPaginationBar(key, totalPages, page) {
+    if (totalPages <= 1) return '';
+    let html = '<div class="pagination-bar">';
+    html += `<button class="btn btn-sm btn-outline" onclick="Components.goToPage('${key}', ${page - 1})" ${page <= 1 ? 'disabled' : ''}>◀ 上一页</button>`;
+    html += `<span class="page-info">第 ${page} / ${totalPages} 页</span>`;
+    html += `<button class="btn btn-sm btn-outline" onclick="Components.goToPage('${key}', ${page + 1})" ${page >= totalPages ? 'disabled' : ''}>下一页 ▶</button>`;
+    html += '</div>';
+    return html;
+  },
+
+  goToPage(key, page) {
+    this._pages[key] = page;
+    // 清除复选框
+    const master = document.getElementById(`${key}CheckAll`);
+    if (master) master.checked = false;
+    this.updateBatchBar(key === 'myEntries' ? 'myEntries' : 'adminUsers');
+    // 重新渲染
+    const renderMap = {
+      adminUsers: () => Components.renderAdminUsers(document.getElementById('adminSearchInput')?.value?.trim() || ''),
+      adminEntries: () => Components.renderAdminEntries(),
+      adminReports: () => Components.renderAdminReports(),
+      adminStaff: () => Components.renderAdminStaff(),
+      adminDeleted: () => Components.renderDeletedEntries(),
+      myEntries: () => Components.renderMyEntries(),
+    };
+    if (renderMap[key]) renderMap[key]();
+  },
+
+  // Shift 区间复选
+  handleCheckClick(e, group) {
+    if (e.shiftKey && this._lastCheckbox && this._lastCheckbox.group === group) {
+      const checkboxes = [...document.querySelectorAll(`.check-${group}`)];
+      const start = checkboxes.indexOf(this._lastCheckbox.el);
+      const end = checkboxes.indexOf(e.target);
+      if (start !== -1 && end !== -1) {
+        const [from, to] = start < end ? [start, end] : [end, start];
+        for (let i = from; i <= to; i++) checkboxes[i].checked = e.target.checked;
+      }
+    }
+    this._lastCheckbox = { el: e.target, group };
+    this.updateBatchBar(group);
+  },
+
   scoreBar(score, cls = '', entryId = '') {
     const pct = Math.round(Math.max(0, Math.min(10, score)) / 10 * 100);
     const attr = entryId ? ` data-entry-score="${entryId}"` : '';
@@ -191,12 +244,13 @@ const Components = {
         const f = filterText.toLowerCase();
         users = users.filter(u => u.username.toLowerCase().includes(f) || String(u.id).includes(f));
       }
-      tbody.innerHTML = users.map(u => {
+      const { pageData, page, totalPages } = this.paginateData(users, 'adminUsers');
+      tbody.innerHTML = pageData.map(u => {
         const isTargetOwner = u.role === 'owner';
         const canManage = isOwner || (!isTargetOwner && u.id !== currentUser.id);
         return `
         <tr>
-          <td><input type="checkbox" class="check-adminUsers" value="${u.id}" onchange="Components.updateBatchBar('adminUsers')"></td>
+          <td><input type="checkbox" class="check-adminUsers" value="${u.id}" onclick="Components.handleCheckClick(event, 'adminUsers')"></td>
           <td>${u.id}</td>
           <td>${this.esc(u.username)}</td>
           <td>
@@ -224,6 +278,10 @@ const Components = {
           </td>
         </tr>
       `}).join('');
+      // 分页控件
+      const wrap = document.getElementById('adminUsersTable').closest('.admin-table-wrap');
+      wrap.querySelectorAll('.pagination-bar').forEach(e => e.remove());
+      wrap.insertAdjacentHTML('beforeend', this.renderPaginationBar('adminUsers', totalPages, page));
     } catch (err) {
       Components.showToast('加载用户列表失败：' + err.message, 'error');
     }
@@ -231,9 +289,10 @@ const Components = {
 
   async renderAdminEntries() {
     try {
-      const data = await API.getEntries({ limit: 100, sort: 'newest' });
+      const data = await API.getEntries({ limit: 200, sort: 'newest' });
       const tbody = document.querySelector('#adminEntriesTable tbody');
-      tbody.innerHTML = data.entries.map(e => `
+      const { pageData, page, totalPages } = this.paginateData(data.entries, 'adminEntries');
+      tbody.innerHTML = pageData.map(e => `
         <tr>
           <td>${e.id}</td>
           <td>${this.esc(e.name)}</td>
@@ -246,6 +305,9 @@ const Components = {
           </td>
         </tr>
       `).join('');
+      const wrap = document.getElementById('adminEntriesTable').closest('.admin-table-wrap');
+      wrap.querySelectorAll('.pagination-bar').forEach(e => e.remove());
+      wrap.insertAdjacentHTML('beforeend', this.renderPaginationBar('adminEntries', totalPages, page));
     } catch (err) {
       Components.showToast('加载条目列表失败：' + err.message, 'error');
     }
@@ -255,8 +317,9 @@ const Components = {
     try {
       const data = await API.adminGetReports();
       const tbody = document.querySelector('#adminReportsTable tbody');
+      const { pageData, page, totalPages } = this.paginateData(data.reports, 'adminReports');
       const statusMap = { pending: '⏳ 待处理', resolved: '✅ 已处理', dismissed: '❌ 已驳回' };
-      tbody.innerHTML = data.reports.map(r => {
+      tbody.innerHTML = pageData.map(r => {
         const isPending = r.status === 'pending';
         const submitterId = r.submitted_by;
         return `
@@ -280,6 +343,9 @@ const Components = {
           </td>
         </tr>
       `}).join('');
+      const wrap2 = document.getElementById('adminReportsTable').closest('.admin-table-wrap');
+      wrap2.querySelectorAll('.pagination-bar').forEach(e => e.remove());
+      wrap2.insertAdjacentHTML('beforeend', this.renderPaginationBar('adminReports', totalPages, page));
     } catch (err) {
       Components.showToast('加载投诉列表失败：' + err.message, 'error');
     }
@@ -289,12 +355,13 @@ const Components = {
     try {
       const data = await API.adminGetUsers();
       const staff = data.users.filter(u => u.role === 'admin' || u.role === 'owner');
+      const { pageData, page, totalPages } = this.paginateData(staff, 'adminStaff');
       const tbody = document.querySelector('#adminStaffTable tbody');
       const currentUser = Auth.getUser();
       const isOwner = currentUser && currentUser.role === 'owner';
-      tbody.innerHTML = staff.map(u => `
+      tbody.innerHTML = pageData.map(u => `
         <tr>
-          <td><input type="checkbox" class="check-adminStaff" value="${u.id}" onchange="Components.updateBatchBar('adminStaff')"></td>
+          <td><input type="checkbox" class="check-adminStaff" value="${u.id}" onclick="Components.handleCheckClick(event, 'adminStaff')"></td>
           <td>${u.id}</td>
           <td>${this.esc(u.username)}</td>
           <td>
@@ -315,6 +382,9 @@ const Components = {
           </td>
         </tr>
       `).join('');
+      const wrap3 = document.getElementById('adminStaffTable').closest('.admin-table-wrap');
+      wrap3.querySelectorAll('.pagination-bar').forEach(e => e.remove());
+      wrap3.insertAdjacentHTML('beforeend', this.renderPaginationBar('adminStaff', totalPages, page));
     } catch (err) {
       Components.showToast('加载管理人员列表失败：' + err.message, 'error');
     }
@@ -324,7 +394,8 @@ const Components = {
     try {
       const data = await API.adminGetDeletedEntries();
       const tbody = document.querySelector('#adminDeletedTable tbody');
-      tbody.innerHTML = data.entries.map(e => `
+      const { pageData, page, totalPages } = this.paginateData(data.entries, 'adminDeleted');
+      tbody.innerHTML = pageData.map(e => `
         <tr>
           <td>${e.id}</td>
           <td>${this.esc(e.name)}</td>
@@ -339,6 +410,10 @@ const Components = {
       `).join('');
       if (data.entries.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">回收站为空喵～</td></tr>';
+      } else {
+        const wrap4 = document.getElementById('adminDeletedTable').closest('.admin-table-wrap');
+        wrap4.querySelectorAll('.pagination-bar').forEach(e => e.remove());
+        wrap4.insertAdjacentHTML('beforeend', this.renderPaginationBar('adminDeleted', totalPages, page));
       }
     } catch (err) {
       Components.showToast('加载已删条目失败：' + err.message, 'error');
@@ -350,12 +425,13 @@ const Components = {
       const data = await API.getEntries({ limit: 100, sort: 'newest' });
       const userId = Auth.getUser()?.id;
       const myEntries = data.entries.filter(e => e.submitted_by === userId);
+      const { pageData, page, totalPages } = this.paginateData(myEntries, 'myEntries');
       const tbody = document.querySelector('#myEntriesTable tbody');
       const user = Auth.getUser();
       const canEdit = user && user.role !== 'unauthorized';
-      tbody.innerHTML = myEntries.map(e => `
+      tbody.innerHTML = pageData.map(e => `
         <tr>
-          <td><input type="checkbox" class="check-myEntries" value="${e.id}" onchange="Components.updateBatchBar('myEntries')"></td>
+          <td><input type="checkbox" class="check-myEntries" value="${e.id}" onclick="Components.handleCheckClick(event, 'myEntries')"></td>
           <td>${e.id}</td>
           <td>${this.esc(e.name)}</td>
           <td>${e.score}/10</td>
@@ -369,6 +445,10 @@ const Components = {
       `).join('');
       if (myEntries.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">还没有上传过人物喵～</td></tr>';
+      } else {
+        const wrap5 = document.getElementById('myEntriesTable').closest('.admin-table-wrap');
+        wrap5.querySelectorAll('.pagination-bar').forEach(e => e.remove());
+        wrap5.insertAdjacentHTML('beforeend', this.renderPaginationBar('myEntries', totalPages, page));
       }
     } catch (err) {
       Components.showToast('加载失败：' + err.message, 'error');
