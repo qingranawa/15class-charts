@@ -517,48 +517,71 @@ const App = {
         Components.showToast('该条目没有关联用户（可能已被删除）', 'error');
         return;
       }
-      // 获取提交者信息
-      const data = await API.adminGetUsers();
-      const submitter = data.users.find(u => u.id === entry.submitted_by);
-      if (!submitter) {
-        Components.showToast('提交者不存在', 'error');
-        return;
-      }
-      const action = prompt(
-        `管理用户: ${submitter.username} (ID: ${submitter.id})\n角色: ${submitter.role}\n票数: ${submitter.vote_balance}\n\n输入操作:\n  ban — 封禁用户（设为 unauthorized）\n  unban — 解封用户（设为 user）\n  delete — 删除该用户及所有数据`
-      );
-      if (!action) return;
-      switch (action.trim().toLowerCase()) {
-        case 'ban':
-          if (!confirm(`确定要封禁用户 ${submitter.username} 吗？`)) return;
-          await API.adminUpdateUser(submitter.id, { role: 'unauthorized' });
-          Components.showToast(`用户 ${submitter.username} 已被封禁`, 'success');
-          break;
-        case 'unban':
-          await API.adminUpdateUser(submitter.id, { role: 'user' });
-          Components.showToast(`用户 ${submitter.username} 已解封`, 'success');
-          break;
-        case 'delete':
-          if (!confirm(`确定要删除用户 ${submitter.username} 及其所有数据吗？此操作不可撤销！`)) return;
-          await API.adminDeleteUser(submitter.id);
-          Components.showToast('用户已删除', 'success');
-          this.closeModal('detail');
-          this.loadLeaderboard();
-          break;
-        default:
-          Components.showToast('无效操作，请输入 ban / unban / delete', 'error');
+      // 在详情模态框底部展开封禁选项
+      const actionsDiv = document.querySelector('.detail-actions');
+      if (actionsDiv) {
+        const existing = document.getElementById('detailBanBtns');
+        if (existing) { existing.remove(); return; }
+        const div = document.createElement('div');
+        div.id = 'detailBanBtns';
+        div.style.cssText = 'margin-top:12px;display:flex;flex-wrap:wrap;gap:4px;justify-content:center';
+        div.innerHTML = Components.banButtons(entry.submitted_by, true);
+        actionsDiv.after(div);
       }
     } catch (err) {
       Components.showToast(err.message, 'error');
     }
   },
 
+  // ====== Ban ======
+  async banUser(id, duration) {
+    if (!confirm(`确定封禁用户 ${duration} 吗？`)) return;
+    try {
+      await API.adminBanUser(id, duration);
+      Components.showToast(`已封禁 ${duration}`, 'success');
+      Components.renderAdminUsers();
+      Components.renderAdminStaff();
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  async unbanUser(id) {
+    if (!confirm('确定解封该用户吗？')) return;
+    try {
+      await API.adminUnbanUser(id);
+      Components.showToast('已解封', 'success');
+      Components.renderAdminUsers();
+      Components.renderAdminStaff();
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  toggleBanBtns(btn) {
+    const span = btn.nextElementSibling;
+    if (span) span.style.display = span.style.display === 'none' ? 'flex' : 'none';
+  },
+
   // ====== Report Resolution ======
+  async handleReportDelete(entryId, reportId) {
+    if (!confirm('确定下架删除该条目吗？')) return;
+    try {
+      await API.adminDeleteEntry(entryId);
+      try { await API.adminResolveReport(reportId, { status: 'resolved', resolution: '已下架删除' }); } catch {}
+      Components.showToast('已下架删除', 'success');
+      Components.renderAdminReports();
+      this.loadLeaderboard();
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
   async resolveReport(id, status) {
-    const resolution = status === 'resolved' ? '投诉有效，已处理' : '投诉无效，已驳回';
+    const resolution = status === 'resolved' ? '投诉已处理' : '投诉已驳回';
     try {
       await API.adminResolveReport(id, { status, resolution });
-      Components.showToast(status === 'resolved' ? '投诉已通过' : '投诉已驳回', 'success');
+      Components.showToast(status === 'resolved' ? '已处理' : '已驳回', 'success');
       Components.renderAdminReports();
     } catch (err) {
       Components.showToast(err.message, 'error');

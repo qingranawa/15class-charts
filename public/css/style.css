@@ -456,6 +456,11 @@ a:hover { text-decoration: underline; }
 .admin-table select { cursor: pointer; }
 .admin-inline-form { display: flex; gap: 6px; align-items: center; }
 
+/* ====== Ban Buttons ====== */
+.ban-btn-group { display: inline-flex; flex-wrap: wrap; gap: 2px; }
+.ban-btn-group .btn-sm { padding: 3px 7px; font-size: 0.72rem; border-radius: 4px; }
+.ban-btn-inline { display: none; flex-wrap: wrap; gap: 2px; }
+
 /* ====== Footer Disclaimer ====== */
 .footer-disclaimer { font-size: 0.75rem; margin-top: 8px; color: var(--text-muted); opacity: 0.7; }
 

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT DEFAULT 'user',
   vote_balance INTEGER DEFAULT 10,
   last_vote_refill TEXT DEFAULT (datetime('now')),
+  banned_until TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 

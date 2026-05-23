@@ -27,6 +27,26 @@ const Components = {
     return new Date(dateStr).toLocaleDateString('zh-CN');
   },
 
+  // 封禁按钮组（复用）
+  banButtons(userId, showUnban = false) {
+    const durations = [
+      { label: '5h', dur: '5h', cls: '' },
+      { label: '1d', dur: '1d', cls: '' },
+      { label: '3d', dur: '3d', cls: '' },
+      { label: '7d', dur: '7d', cls: '' },
+      { label: '14d', dur: '14d', cls: '' },
+      { label: '1m', dur: '1m', cls: '' },
+      { label: '50y', dur: '50y', cls: 'style="color:var(--red)"' },
+    ];
+    const banBtns = durations.map(d =>
+      `<button class="btn btn-sm btn-outline" ${d.cls} onclick="event.stopPropagation(); App.banUser(${userId}, '${d.dur}')" title="封禁 ${d.label}">${d.label}</button>`
+    ).join('');
+    const unbanBtn = showUnban
+      ? `<button class="btn btn-sm btn-outline" style="color:var(--green)" onclick="event.stopPropagation(); App.unbanUser(${userId})">解封</button>`
+      : '';
+    return `<span class="ban-btn-group">${banBtns}${unbanBtn}</span>`;
+  },
+
   renderPodium(entries) {
     const podium = document.getElementById('podium');
     const top3 = entries.slice(0, 3);
@@ -144,17 +164,24 @@ const Components = {
     try {
       const data = await API.adminGetUsers();
       const tbody = document.querySelector('#adminUsersTable tbody');
-      tbody.innerHTML = data.users.map(u => `
+      const currentUser = Auth.getUser();
+      const isOwner = currentUser && currentUser.role === 'owner';
+      tbody.innerHTML = data.users.map(u => {
+        const isTargetOwner = u.role === 'owner';
+        const canManage = isOwner || (!isTargetOwner && u.id !== currentUser.id);
+        return `
         <tr>
           <td>${u.id}</td>
           <td>${this.esc(u.username)}</td>
           <td>
-            <select onchange="App.adminUpdateUser(${u.id}, 'role', this.value)">
-              <option value="unauthorized" ${u.role === 'unauthorized' ? 'selected' : ''}>unauthorized</option>
-              <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
-              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
-              <option value="owner" ${u.role === 'owner' ? 'selected' : ''}>owner</option>
-            </select>
+            ${canManage ? `
+              <select onchange="App.adminUpdateUser(${u.id}, 'role', this.value)">
+                <option value="unauthorized" ${u.role === 'unauthorized' ? 'selected' : ''}>unauthorized</option>
+                <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
+                ${isOwner ? `<option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>` : ''}
+                ${isOwner ? `<option value="owner" ${u.role === 'owner' ? 'selected' : ''}>owner</option>` : ''}
+              </select>
+            ` : `<span class="role-badge ${u.role}">${u.role}</span>`}
           </td>
           <td>
             <span class="admin-inline-form">
@@ -163,11 +190,14 @@ const Components = {
             </span>
           </td>
           <td>${this.timeAgo(u.created_at)}</td>
-          <td>
-            <button class="btn btn-sm btn-outline" onclick="App.adminDeleteUser(${u.id})" style="color:var(--red)">删除</button>
+          <td style="white-space:nowrap">
+            ${canManage ? `
+              ${this.banButtons(u.id, u.role === 'unauthorized')}
+              <button class="btn btn-sm btn-outline" onclick="App.adminDeleteUser(${u.id})" style="color:var(--red);margin-left:4px">🗑</button>
+            ` : `<span style="font-size:0.8rem;color:var(--gold)">👑</span>`}
           </td>
         </tr>
-      `).join('');
+      `}).join('');
     } catch (err) {
       Components.showToast('加载用户列表失败：' + err.message, 'error');
     }
@@ -200,22 +230,30 @@ const Components = {
       const data = await API.adminGetReports();
       const tbody = document.querySelector('#adminReportsTable tbody');
       const statusMap = { pending: '⏳ 待处理', resolved: '✅ 已处理', dismissed: '❌ 已驳回' };
-      tbody.innerHTML = data.reports.map(r => `
+      tbody.innerHTML = data.reports.map(r => {
+        const isPending = r.status === 'pending';
+        const submitterId = r.submitted_by;
+        return `
         <tr>
           <td>${r.id}</td>
           <td>${this.esc(r.entry_name || '已删除')}</td>
           <td>${this.esc(r.reporter_name || '-')}</td>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${this.esc(r.reason)}">${this.esc(r.reason)}</td>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${this.esc(r.reason)}">${this.esc(r.reason)}</td>
           <td>${statusMap[r.status] || r.status}</td>
           <td>${this.timeAgo(r.created_at)}</td>
-          <td>
-            ${r.status === 'pending' ? `
-              <button class="btn btn-sm btn-outline" onclick="App.resolveReport(${r.id}, 'resolved')" style="color:var(--green);margin-right:4px">通过</button>
-              <button class="btn btn-sm btn-outline" onclick="App.resolveReport(${r.id}, 'dismissed')" style="color:var(--red)">驳回</button>
+          <td style="white-space:nowrap">
+            ${isPending ? `
+              <button class="btn btn-sm btn-outline" onclick="App.showEditEntry(${r.entry_id})" style="margin-right:4px">✏️ 修改</button>
+              <button class="btn btn-sm btn-outline" onclick="App.handleReportDelete(${r.entry_id}, ${r.id})" style="color:var(--red);margin-right:4px">🗑 下架</button>
+              <button class="btn btn-sm btn-outline" onclick="App.resolveReport(${r.id}, 'dismissed')" style="margin-right:4px">⛔ 驳回</button>
+              ${submitterId ? `
+                <button class="btn btn-sm btn-outline" onclick="App.toggleBanBtns(this)">👤 管理${this.esc(r.submitter_name || '提交者')}</button>
+                <span class="ban-btn-inline" style="display:none;flex-wrap:wrap;gap:3px;margin-top:4px">${this.banButtons(submitterId, true)}</span>
+              ` : ''}
             ` : `<span style="font-size:0.8rem;color:var(--text-muted)">${this.esc(r.resolver_name || '')} · ${r.resolution || ''}</span>`}
           </td>
         </tr>
-      `).join('');
+      `}).join('');
     } catch (err) {
       Components.showToast('加载投诉列表失败：' + err.message, 'error');
     }
@@ -224,7 +262,6 @@ const Components = {
   async renderAdminStaff() {
     try {
       const data = await API.adminGetUsers();
-      // 只显示 admin 和 owner
       const staff = data.users.filter(u => u.role === 'admin' || u.role === 'owner');
       const tbody = document.querySelector('#adminStaffTable tbody');
       const currentUser = Auth.getUser();
@@ -238,14 +275,16 @@ const Components = {
               <select onchange="App.adminUpdateUser(${u.id}, 'role', this.value)">
                 <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
                 <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
+                <option value="unauthorized" ${u.role === 'unauthorized' ? 'selected' : ''}>unauthorized</option>
               </select>
             ` : `<span class="role-badge ${u.role}">${u.role}</span>`}
           </td>
           <td>${u.vote_balance}</td>
           <td>${this.timeAgo(u.created_at)}</td>
-          <td>
+          <td style="white-space:nowrap">
             ${isOwner && u.role !== 'owner' ? `
-              <button class="btn btn-sm btn-outline" onclick="App.adminDeleteUser(${u.id})" style="color:var(--red)">移除</button>
+              ${this.banButtons(u.id, u.role === 'unauthorized')}
+              <button class="btn btn-sm btn-outline" onclick="App.adminDeleteUser(${u.id})" style="color:var(--red);margin-left:4px">🗑</button>
             ` : u.role === 'owner' ? '<span style="font-size:0.8rem;color:var(--gold)">👑 所有者</span>' : '-'}
           </td>
         </tr>

@@ -61,6 +61,12 @@ const API = {
   adminUpdateUser(id, data) {
     return this.request(`/admin/users/${id}`, { method: 'PATCH', body: data });
   },
+  adminBanUser(id, duration) {
+    return this.request(`/admin/users/${id}`, { method: 'PATCH', body: { ban_duration: duration } });
+  },
+  adminUnbanUser(id) {
+    return this.request(`/admin/users/${id}`, { method: 'PATCH', body: { role: 'user' } });
+  },
   adminDeleteUser(id) {
     return this.request(`/admin/users/${id}`, { method: 'DELETE' });
   },

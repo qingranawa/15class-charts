@@ -96,5 +96,21 @@ export async function verifyToken(token, secret) {
 export async function getAuthUser(request, env) {
   const auth = request.headers.get('Authorization');
   if (!auth || !auth.startsWith('Bearer ')) return null;
-  return verifyToken(auth.slice(7), env.JWT_SECRET);
+  const payload = await verifyToken(auth.slice(7), env.JWT_SECRET);
+  if (!payload) return null;
+
+  // 自动解封：检查 banned_until 是否已过期喵～
+  try {
+    const user = await env.DB.prepare('SELECT role, banned_until FROM users WHERE id = ?').bind(payload.userId).first();
+    if (user && user.role === 'unauthorized' && user.banned_until) {
+      const until = new Date(user.banned_until + 'Z').getTime();
+      if (Date.now() > until) {
+        // 封禁到期，自动恢复
+        await env.DB.prepare("UPDATE users SET role = 'user', banned_until = NULL WHERE id = ?").bind(payload.userId).run();
+        payload.role = 'user';
+      }
+    }
+  } catch { /* 容错：DB 查询失败不影响已有 token */ }
+
+  return payload;
 }
