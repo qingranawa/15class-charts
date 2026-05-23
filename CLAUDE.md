@@ -4,6 +4,8 @@
 
 - GitHub: [https://github.com/qingranawa/15class-charts](https://github.com/qingranawa/15class-charts)
 
+- Cloudflare: [https://15class-charts.pages.dev/](https://15class-charts.pages.dev/)
+
 ## 技术栈
 
 | 层 | 技术 |
