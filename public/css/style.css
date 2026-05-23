@@ -276,18 +276,18 @@ a:hover { text-decoration: underline; }
 }
 .rules-box summary:hover { color: var(--text); }
 .rules-content { padding: 0 20px 18px; }
-.rules-section { margin-bottom: 14px; }
-.rules-section:last-child { margin-bottom: 0; }
-.rules-section h4 { font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
-.rules-section ul { list-style: none; padding: 0; }
-.rules-section li {
+.rules-content h3 { font-size: 0.88rem; font-weight: 600; margin: 16px 0 6px; color: var(--text); }
+.rules-content h3:first-child { margin-top: 4px; }
+.rules-content ul { list-style: none; padding: 0; }
+.rules-content li {
   font-size: 0.82rem; color: var(--text-secondary);
   padding: 3px 0; padding-left: 16px; position: relative;
 }
-.rules-section li::before {
+.rules-content li::before {
   content: '·'; position: absolute; left: 4px;
   color: var(--text-muted); font-weight: 700;
 }
+.rules-content strong { color: var(--text); }
 
 /* ====== Empty State ====== */
 .empty-state { text-align: center; padding: 60px 20px; }

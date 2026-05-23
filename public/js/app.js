@@ -10,6 +10,7 @@ const App = {
   async init() {
     Auth.init();
     this.bindEvents();
+    this.renderRulesMd();
     this.updateAuthUI();
     this.checkSubmitAccess();
     if (Auth.isLoggedIn()) await this.refreshVoteBalance();
@@ -91,7 +92,14 @@ const App = {
     this.loadLeaderboard();
   },
 
-  // ====== Auth UI ======
+  // ====== Markdown Rendering ======
+  renderRulesMd() {
+    const src = document.getElementById('rulesMd');
+    const target = document.getElementById('rulesContent');
+    if (src && target && window.marked) {
+      target.innerHTML = marked.parse(src.textContent);
+    }
+  },
   updateAuthUI() {
     const nav = document.getElementById('navActions');
     const user = Auth.getUser();
