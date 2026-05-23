@@ -49,17 +49,33 @@ const App = {
     // ESC 关闭弹窗
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
-        if (document.getElementById('modalLogin').classList.contains('active')) this.closeModal('login');
-        if (document.getElementById('modalRegister').classList.contains('active')) this.closeModal('register');
+        for (const name of ['login', 'register', 'detail']) {
+          const el = document.getElementById(`modal${name.charAt(0).toUpperCase() + name.slice(1)}`);
+          if (el && el.classList.contains('active')) { this.closeModal(name); break; }
+        }
       }
+    });
+
+    // 管理员面板内 Tab 切换
+    document.querySelectorAll('.admin-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('active', t === tab));
+        document.querySelectorAll('.admin-content').forEach(c => c.classList.toggle('active', c.id === `admin${tab.dataset.adminTab === 'users' ? 'Users' : 'Entries'}`));
+        if (tab.dataset.adminTab === 'users') Components.renderAdminUsers();
+        else Components.renderAdminEntries();
+      });
     });
   },
 
   // ====== Tab & Sort ======
   switchTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab${tab === 'leaderboard' ? 'Leaderboard' : 'Submit'}`));
+    document.querySelectorAll('.tab-content').forEach(c => {
+      const idMap = { leaderboard: 'tabLeaderboard', submit: 'tabSubmit', admin: 'tabAdmin' };
+      c.classList.toggle('active', c.id === idMap[tab]);
+    });
     this.checkSubmitAccess();
+    if (tab === 'admin') Components.renderAdminUsers();
   },
 
   switchSort(sort) {
@@ -81,11 +97,16 @@ const App = {
         <span class="nav-user">👤 ${Components.esc(user.username)}</span>
         <button class="btn btn-outline btn-sm" onclick="App.logout()">退出</button>
       `;
+      // 管理员显示管理 tab
+      const adminTab = document.querySelector('.tab.admin-only');
+      if (adminTab) adminTab.style.display = user.role === 'admin' ? '' : 'none';
     } else {
       nav.innerHTML = `
         <button class="btn btn-outline btn-sm" onclick="App.showModal('login')">登录</button>
         <button class="btn btn-primary btn-sm" onclick="App.showModal('register')">注册</button>
       `;
+      const adminTab = document.querySelector('.tab.admin-only');
+      if (adminTab) adminTab.style.display = 'none';
     }
   },
 
@@ -265,6 +286,79 @@ const App = {
     try {
       await API.deleteEntry(id);
       Components.showToast('删除成功', 'success');
+      this.loadLeaderboard();
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  // ====== Detail Modal ======
+  async showDetail(id) {
+    try {
+      const entry = await API.getEntry(id);
+      Components.renderDetail(entry);
+      this.showModal('detail');
+    } catch (err) {
+      Components.showToast('加载详情失败：' + err.message, 'error');
+    }
+  },
+
+  async voteFromDetail(id, value) {
+    if (!Auth.isLoggedIn()) {
+      Components.showToast('登录后才能投票喵～', 'error');
+      return;
+    }
+    try {
+      const data = await API.vote(id, value);
+      this.voteBalance = data.vote_balance;
+      this.updateAuthUI();
+      // 刷新详情
+      const entry = await API.getEntry(id);
+      Components.renderDetail(entry);
+      this.loadLeaderboard();
+      const msg = data.vote === null ? '已取消投票' : `投票成功！剩余 ${data.vote_balance} 票`;
+      Components.showToast(msg, 'success');
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  // ====== Admin ======
+  async adminUpdateUser(id, field, value) {
+    try {
+      const body = {};
+      body[field] = value;
+      await API.adminUpdateUser(id, body);
+      Components.showToast('用户已更新', 'success');
+      Components.renderAdminUsers();
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  async adminUpdateVotes(id) {
+    const val = document.getElementById(`voteBal${id}`).value;
+    await this.adminUpdateUser(id, 'vote_balance', parseInt(val));
+  },
+
+  async adminDeleteUser(id) {
+    if (!confirm('确定要删除该用户及其所有数据和投票吗？此操作不可撤销！')) return;
+    try {
+      await API.adminDeleteUser(id);
+      Components.showToast('用户已删除', 'success');
+      Components.renderAdminUsers();
+      this.loadLeaderboard();
+    } catch (err) {
+      Components.showToast(err.message, 'error');
+    }
+  },
+
+  async adminDeleteEntry(id) {
+    if (!confirm('确定要删除该条目吗？')) return;
+    try {
+      await API.adminDeleteEntry(id);
+      Components.showToast('条目已删除', 'success');
+      Components.renderAdminEntries();
       this.loadLeaderboard();
     } catch (err) {
       Components.showToast(err.message, 'error');

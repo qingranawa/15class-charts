@@ -58,6 +58,7 @@
       <div class="tabs">
         <button class="tab active" data-tab="leaderboard">🏆 排行榜</button>
         <button class="tab" data-tab="submit">✍️ 提交新人物</button>
+        <button class="tab admin-only" data-tab="admin" style="display:none">🛡️ 管理</button>
       </div>
 
       <!-- ====== 排行榜视图 ====== -->
@@ -125,13 +126,41 @@
           </div>
         </div>
       </div>
+
+      <!-- ====== 管理视图 ====== -->
+      <div class="tab-content" id="tabAdmin">
+        <div class="admin-panel" id="adminPanel">
+          <h2 class="section-title">🛡️ 管理员面板</h2>
+          <div class="admin-tabs">
+            <button class="admin-tab active" data-admin-tab="users">用户管理</button>
+            <button class="admin-tab" data-admin-tab="entries">条目管理</button>
+          </div>
+          <div class="admin-content active" id="adminUsers">
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="adminUsersTable">
+                <thead><tr><th>ID</th><th>用户名</th><th>角色</th><th>票数</th><th>注册时间</th><th>操作</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="admin-content" id="adminEntries">
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="adminEntriesTable">
+                <thead><tr><th>ID</th><th>名称</th><th>得分</th><th>提交者</th><th>时间</th><th>操作</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 
   <!-- 页脚 -->
   <footer class="footer">
-    <p>天津操蛋孩子榜 &copy; 2026 — 纯属娱乐，别太当真</p>
+    <p>15班排行榜 &copy; 2026 — 纯属娱乐，别太当真</p>
     <p class="footer-sub">本网站仅代表网友主观意见，排名不代表实际情况</p>
+    <p class="footer-disclaimer">免责声明：本网站仅作数据记录之用，不包含任何指向性信息。如内容被曲解或不当使用，本网站不承担任何责任。</p>
   </footer>
 
   <!-- ====== 登录弹窗 ====== -->
@@ -171,6 +200,14 @@
         <button type="submit" class="btn btn-primary btn-lg btn-full">注册</button>
       </form>
       <p class="modal-switch">已有账号？<a href="#" onclick="App.switchModal('register','login')">去登录</a></p>
+    </div>
+  </div>
+
+  <!-- ====== 详情弹窗 ====== -->
+  <div class="modal-overlay" id="modalDetail">
+    <div class="modal modal-detail">
+      <button class="modal-close" onclick="App.closeModal('detail')">&times;</button>
+      <div id="detailContent"></div>
     </div>
   </div>
 

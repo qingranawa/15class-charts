@@ -33,7 +33,7 @@ const Components = {
     if (top3.length === 0) { podium.innerHTML = ''; return; }
 
     podium.innerHTML = top3.map((e, i) => `
-      <div class="podium-card rank-${i + 1}">
+      <div class="podium-card rank-${i + 1}" onclick="App.showDetail(${e.id})">
         <div class="podium-rank">${this.rankEmoji(i + 1)}</div>
         <div class="podium-name">${this.esc(e.name)}</div>
         <div class="podium-desc">${this.esc(e.description)}</div>
@@ -49,7 +49,7 @@ const Components = {
     const html = entries.map((e, i) => {
       const rank = startRank + i;
       return `
-        <div class="entry-card" style="animation-delay:${i * 0.04}s">
+        <div class="entry-card" style="animation-delay:${i * 0.04}s" onclick="App.showDetail(${e.id})">
           <div class="entry-rank-num">${rank <= 3 ? this.rankEmoji(rank) : '#' + rank}</div>
           <div class="entry-info">
             <div class="entry-name">${this.esc(e.name)}</div>
@@ -60,7 +60,7 @@ const Components = {
               <span>${this.timeAgo(e.created_at)}</span>
             </div>
           </div>
-          <div class="entry-votes">
+          <div class="entry-votes" onclick="event.stopPropagation()">
             <button class="btn-vote ${e.user_vote === 1 ? 'active-up' : ''}" onclick="App.vote(${e.id}, 1)" title="赞">
               ▲
             </button>
@@ -70,7 +70,7 @@ const Components = {
             </button>
           </div>
           ${user && e.submitted_by === user.id ? `
-            <button class="btn btn-outline btn-sm" onclick="App.deleteEntry(${e.id})" title="删除">🗑</button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); App.deleteEntry(${e.id})" title="删除">🗑</button>
           ` : ''}
         </div>
       `;
@@ -107,5 +107,76 @@ const Components = {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  },
+
+  renderDetail(entry) {
+    const ct = document.getElementById('detailContent');
+    ct.innerHTML = `
+      <div class="detail-header">
+        <div class="detail-name">${this.esc(entry.name)}</div>
+        <span class="detail-category">${this.categoryLabel(entry.category)}</span>
+      </div>
+      <div class="detail-score-big">${entry.score} 票</div>
+      <div class="detail-votes">
+        <button class="btn-vote ${entry.user_vote === 1 ? 'active-up' : ''}" onclick="App.voteFromDetail(${entry.id}, 1)">▲</button>
+        <button class="btn-vote ${entry.user_vote === -1 ? 'active-down' : ''}" onclick="App.voteFromDetail(${entry.id}, -1)">▼</button>
+      </div>
+      <div class="detail-desc">${this.esc(entry.description)}</div>
+      <div class="detail-meta">
+        提交者：${this.esc(entry.submitter || '未知')} · ${this.timeAgo(entry.created_at)}
+      </div>
+    `;
+  },
+
+  async renderAdminUsers() {
+    try {
+      const data = await API.adminGetUsers();
+      const tbody = document.querySelector('#adminUsersTable tbody');
+      tbody.innerHTML = data.users.map(u => `
+        <tr>
+          <td>${u.id}</td>
+          <td>${this.esc(u.username)}</td>
+          <td>
+            <select onchange="App.adminUpdateUser(${u.id}, 'role', this.value)">
+              <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
+              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
+            </select>
+          </td>
+          <td>
+            <span class="admin-inline-form">
+              <input type="number" value="${u.vote_balance}" min="0" style="width:60px" id="voteBal${u.id}">
+              <button class="btn btn-sm btn-outline" onclick="App.adminUpdateVotes(${u.id})">保存</button>
+            </span>
+          </td>
+          <td>${this.timeAgo(u.created_at)}</td>
+          <td>
+            <button class="btn btn-sm btn-outline" onclick="App.adminDeleteUser(${u.id})" style="color:var(--red)">删除</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      Components.showToast('加载用户列表失败：' + err.message, 'error');
+    }
+  },
+
+  async renderAdminEntries() {
+    try {
+      const data = await API.getEntries({ limit: 100, sort: 'newest' });
+      const tbody = document.querySelector('#adminEntriesTable tbody');
+      tbody.innerHTML = data.entries.map(e => `
+        <tr>
+          <td>${e.id}</td>
+          <td>${this.esc(e.name)}</td>
+          <td>${e.score}</td>
+          <td>${this.esc(e.submitter || '-')}</td>
+          <td>${this.timeAgo(e.created_at)}</td>
+          <td>
+            <button class="btn btn-sm btn-outline" onclick="App.adminDeleteEntry(${e.id})" style="color:var(--red)">删除</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      Components.showToast('加载条目列表失败：' + err.message, 'error');
+    }
   },
 };

@@ -53,4 +53,18 @@ const API = {
   getVoteBalance() {
     return this.request('/vote');
   },
+
+  // Admin
+  adminGetUsers() {
+    return this.request('/admin/users');
+  },
+  adminUpdateUser(id, data) {
+    return this.request(`/admin/users/${id}`, { method: 'PATCH', body: data });
+  },
+  adminDeleteUser(id) {
+    return this.request(`/admin/users/${id}`, { method: 'DELETE' });
+  },
+  adminDeleteEntry(id) {
+    return this.request(`/admin/entries/${id}`, { method: 'DELETE' });
+  },
 };
