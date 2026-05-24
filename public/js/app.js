@@ -327,6 +327,7 @@ const App = {
           }
         }
       }
+
       this.currentPage = data.page;
       this.hasMore = entries.length === data.limit && entries.length < data.total;
       document.getElementById('loadMore').classList.toggle('hidden', !this.hasMore);
@@ -459,9 +460,14 @@ const App = {
       return;
     }
 
-    // 防并发投票喵～
+    // 防并发 + 防双击喵～
     if (!this._voting) this._voting = new Set();
-    if (this._voting.has(entryId)) return;
+    if (this._voting.has(entryId)) { console.log('[DEBUG] vote() BLOCKED by _voting lock'); return; }
+    // 1500ms 防抖：同一条目 1.5 秒内只能投一次
+    if (!this._voteLastCall) this._voteLastCall = {};
+    const _ts = Date.now();
+    if (this._voteLastCall[entryId] && _ts - this._voteLastCall[entryId] < 1500) { return; }
+    this._voteLastCall[entryId] = _ts;
 
     const prevState = this._getVoteState(entryId);
 
@@ -545,9 +551,14 @@ const App = {
       return;
     }
 
-    // 防并发投票喵～
+    // 防并发 + 防双击喵～
     if (!this._voting) this._voting = new Set();
-    if (this._voting.has(id)) return;
+    if (this._voting.has(id)) { console.log('[DEBUG] voteFromDetail() BLOCKED by _voting lock'); return; }
+    // 1500ms 防抖：同一条目 1.5 秒内只能投一次
+    if (!this._voteLastCall) this._voteLastCall = {};
+    const _ts = Date.now();
+    if (this._voteLastCall[id] && _ts - this._voteLastCall[id] < 1500) { return; }
+    this._voteLastCall[id] = _ts;
     this._voting.add(id);
 
     // 检查是否今天已投喵～
@@ -576,7 +587,11 @@ const App = {
       this.updateAuthUI();
       this.updateEntryDOM(id, data);
       // 刷新详情模态框内容
-      const entry = await API.getEntry(id);
+      let entry = await API.getEntry(id);
+      // 用本地缓存覆盖 API 的 user_vote（解决 D1 最终一致性）
+      if (this._myVotes && this._myVotes.has(id) && this._myVotes.get(id) !== 0) {
+        entry.user_vote = this._myVotes.get(id);
+      }
       Components.renderDetail(entry);
       const msg = data.vote === null ? '已取消投票' : `投票成功！剩余 ${data.vote_balance} 票`;
       Components.showToast(msg, 'success');
