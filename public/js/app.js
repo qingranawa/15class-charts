@@ -11,11 +11,19 @@ const App = {
 
   async init() {
     Auth.init();
+    this._myVotes = new Map();
+    this._voting = new Set();
     this.bindEvents();
     this.renderRulesMd();
     this.updateAuthUI();
     this.checkSubmitAccess();
-    if (Auth.isLoggedIn()) await this.refreshVoteBalance();
+    if (Auth.isLoggedIn()) {
+      try {
+        const me = await API.getMe();
+        if (me.role) Auth._user.role = me.role;
+      } catch (e) { /* 角色刷新失败不影响主页 */ }
+      await this.refreshVoteBalance();
+    }
     await this.loadLeaderboard();
   },
 
@@ -296,6 +304,7 @@ const App = {
 
   logout() {
     Auth.logout();
+    this._myVotes = new Map();
     this.updateAuthUI();
     this.checkSubmitAccess();
     Components.showToast('已退出登录', 'info');
@@ -310,6 +319,15 @@ const App = {
       if (this.currentSearch) params.search = this.currentSearch;
       const data = await API.getEntries(params);
       const entries = data.entries;
+      // 用本地缓存覆盖 API 返回的 user_vote（解决 D1 最终一致性导致的读取旧数据问题喵～）
+      if (this._myVotes) {
+        for (const e of entries) {
+          if (this._myVotes.has(e.id)) {
+            e.user_vote = this._myVotes.get(e.id);
+          }
+        }
+      }
+
       this.currentPage = data.page;
       this.hasMore = entries.length === data.limit && entries.length < data.total;
       document.getElementById('loadMore').classList.toggle('hidden', !this.hasMore);
@@ -404,6 +422,11 @@ const App = {
     // 更新 podium 卡片
     const podiumCard = document.querySelector(`.podium-card[data-entry-id="${entryId}"]`);
     if (podiumCard) {
+      const voteBtns = podiumCard.querySelectorAll(`[data-vote-btn="${entryId}"]`);
+      voteBtns.forEach(b => {
+        b.classList.toggle('active-up', data.vote === 1);
+        b.classList.toggle('active-down', data.vote === -1);
+      });
       const barWrap = podiumCard.querySelector(`[data-entry-score="${entryId}"]`);
       if (barWrap) {
         const pct = Math.round(Math.max(0, Math.min(10, data.score)) / 10 * 100);
@@ -436,46 +459,25 @@ const App = {
       Components.showToast('登录后才能投票喵～', 'error');
       return;
     }
+    // 全局锁：一次只允许一个投票请求喵～
+    if (this._voteInProgress) return;
+    this._voteInProgress = true;
 
-    const prevState = this._getVoteState(entryId);
-
-    // 已投过（今天）不能重复投喵～
-    if (prevState !== 0) {
-      const msg = prevState === 1 ? '今天已经赞过了喵～' : '今天已经踩过了喵～';
-      Components.showToast(msg, 'info');
-      return;
-    }
-
-    // 乐观估算分数
-    const getScoreEl = () => {
-      const num = document.querySelector(`[data-entry-score="${entryId}"] .score-bar-num`);
-      return num ? parseInt(num.textContent) || 0 : 0;
-    };
-    const oldScore = getScoreEl();
-    const prevBalance = this.voteBalance;
-    const estScore = Math.max(0, Math.min(10, oldScore + value));
-
-    if (value === 1) this.voteBalance = Math.max(0, prevBalance - 1);
-
-    // 乐观更新 DOM喵～
-    this.updateEntryDOM(entryId, { score: estScore, vote: value });
-    this.updateAuthUI();
-
-    // Toast 立刻显示，不等待 API 喵～
-    const label = value === 1 ? '赞' : '踩';
-    Components.showToast(`已${label}！剩余 ${this.voteBalance} 票`, 'success');
+    // 按钮 loading 态（唯一视觉反馈，不退订业务逻辑喵～）
+    document.querySelectorAll(`[data-vote-btn="${entryId}"]`).forEach(b => b.classList.add('loading'));
 
     try {
       const data = await API.vote(entryId, value);
       this.voteBalance = data.vote_balance;
       this.updateAuthUI();
-      this.updateEntryDOM(entryId, data);
+      await this.loadLeaderboard();
+      const label = value === 1 ? '赞' : '踩';
+      Components.showToast(`已${label}！剩余 ${data.vote_balance} 票`, 'success');
     } catch (err) {
-      // 回滚乐观更新喵～
-      this.voteBalance = prevBalance;
-      this.updateAuthUI();
-      this.updateEntryDOM(entryId, { score: oldScore, vote: 0 });
       Components.showToast(err.message, 'error');
+    } finally {
+      document.querySelectorAll(`[data-vote-btn="${entryId}"]`).forEach(b => b.classList.remove('loading'));
+      this._voteInProgress = false;
     }
   },
 
@@ -493,10 +495,14 @@ const App = {
   // ====== Detail Modal ======
   async showDetail(id) {
     // 立即显示模态框（加载中状态）
-    document.getElementById('detailContent').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">加载中...</div>';
+    document.getElementById('detailContent').innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div><p style="color:var(--text-secondary);margin-top:12px">加载中...</p></div>';
     this.showModal('detail');
     try {
-      const entry = await API.getEntry(id);
+      let entry = await API.getEntry(id);
+      // 用本地缓存覆盖 API 的 user_vote（解决 D1 最终一致性导致的问题喵～）
+      if (this._myVotes && this._myVotes.has(id)) {
+        entry.user_vote = this._myVotes.get(id);
+      }
       Components.renderDetail(entry);
     } catch (err) {
       document.getElementById('detailContent').innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">加载失败：${Components.esc(err.message)}</div>`;
@@ -508,18 +514,30 @@ const App = {
       Components.showToast('登录后才能投票喵～', 'error');
       return;
     }
+    // 全局锁：一次只允许一个投票请求喵～
+    if (this._voteInProgress) return;
+    this._voteInProgress = true;
+
+    // 加载态喵～
+    const detailBtns = document.querySelectorAll('#detailContent [data-vote-btn]');
+    detailBtns.forEach(b => b.classList.add('loading'));
+
     try {
       const data = await API.vote(id, value);
       this.voteBalance = data.vote_balance;
       this.updateAuthUI();
-      this.updateEntryDOM(id, data);
       // 刷新详情模态框内容
-      const entry = await API.getEntry(id);
+      let entry = await API.getEntry(id);
       Components.renderDetail(entry);
+      // 同时更新排行榜
+      this.updateEntryDOM(id, data);
       const msg = data.vote === null ? '已取消投票' : `投票成功！剩余 ${data.vote_balance} 票`;
       Components.showToast(msg, 'success');
     } catch (err) {
       Components.showToast(err.message, 'error');
+    } finally {
+      detailBtns.forEach(b => b.classList.remove('loading'));
+      this._voteInProgress = false;
     }
   },
 
@@ -751,50 +769,60 @@ const App = {
     const ids = Components.getCheckedIds('adminUsers');
     if (ids.length === 0) { Components.showToast('请先选择用户', 'error'); return; }
     if (!confirm(`确定批量封禁 ${ids.length} 个用户 ${duration} 吗？`)) return;
+    Components.clearCache('adminUsers');
+    Components.showToast(`正在封禁 ${ids.length} 个用户...`, 'info');
     try {
-      for (const id of ids) { await API.adminBanUser(id, duration); }
-      Components.clearCache('adminUsers');
+      await Promise.all(ids.map(id => API.adminBanUser(id, duration)));
       Components.showToast(`已封禁 ${ids.length} 个用户`, 'success');
-      Components.renderAdminUsers();
-      document.getElementById('adminUsersCheckAll').checked = false;
     } catch (err) { Components.showToast(err.message, 'error'); }
+    Components.renderAdminUsers();
+    document.getElementById('adminUsersCheckAll').checked = false;
+    Components.updateBatchBar('adminUsers');
   },
 
   async batchUnbanUsers() {
     const ids = Components.getCheckedIds('adminUsers');
     if (ids.length === 0) { Components.showToast('请先选择用户', 'error'); return; }
     if (!confirm(`确定批量解封 ${ids.length} 个用户吗？`)) return;
+    Components.clearCache('adminUsers');
+    Components.showToast(`正在解封 ${ids.length} 个用户...`, 'info');
     try {
-      for (const id of ids) { await API.adminUnbanUser(id); }
+      await Promise.all(ids.map(id => API.adminUnbanUser(id)));
       Components.showToast(`已解封 ${ids.length} 个用户`, 'success');
-      Components.renderAdminUsers();
-      document.getElementById('adminUsersCheckAll').checked = false;
     } catch (err) { Components.showToast(err.message, 'error'); }
+    Components.renderAdminUsers();
+    document.getElementById('adminUsersCheckAll').checked = false;
+    Components.updateBatchBar('adminUsers');
   },
 
   async batchDeleteUsers() {
     const ids = Components.getCheckedIds('adminUsers');
     if (ids.length === 0) { Components.showToast('请先选择用户', 'error'); return; }
     if (!confirm(`确定删除 ${ids.length} 个用户及其所有数据吗？此操作不可撤销！`)) return;
+    Components.clearCache('adminUsers');
+    Components.showToast(`正在删除 ${ids.length} 个用户...`, 'info');
     try {
-      for (const id of ids) { await API.adminDeleteUser(id); }
+      await Promise.all(ids.map(id => API.adminDeleteUser(id)));
       Components.showToast(`已删除 ${ids.length} 个用户`, 'success');
-      Components.renderAdminUsers();
-      document.getElementById('adminUsersCheckAll').checked = false;
     } catch (err) { Components.showToast(err.message, 'error'); }
+    Components.renderAdminUsers();
+    document.getElementById('adminUsersCheckAll').checked = false;
+    Components.updateBatchBar('adminUsers');
   },
 
   async batchDeleteMyEntries() {
     const ids = Components.getCheckedIds('myEntries');
     if (ids.length === 0) { Components.showToast('请先选择条目', 'error'); return; }
     if (!confirm(`确定删除 ${ids.length} 个条目吗？`)) return;
+    Components.showToast(`正在删除 ${ids.length} 个条目...`, 'info');
     try {
-      for (const id of ids) { await API.deleteEntry(id); }
+      await Promise.all(ids.map(id => API.deleteEntry(id)));
       Components.showToast(`已删除 ${ids.length} 个条目`, 'success');
-      Components.renderMyEntries();
-      this.loadLeaderboard();
-      document.getElementById('myEntriesCheckAll').checked = false;
     } catch (err) { Components.showToast(err.message, 'error'); }
+    Components.renderMyEntries();
+    this.loadLeaderboard();
+    document.getElementById('myEntriesCheckAll').checked = false;
+    Components.updateBatchBar('myEntries');
   },
 };
 

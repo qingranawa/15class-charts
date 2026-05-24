@@ -33,6 +33,9 @@ const API = {
   changePassword(oldPassword, newPassword) {
     return this.request('/auth/change-password', { method: 'POST', body: { oldPassword, newPassword } });
   },
+  getMe() {
+    return this.request("/auth/me");
+  },
 
   // Entries
   getEntries(params = {}) {

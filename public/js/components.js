@@ -67,6 +67,10 @@ const Components = {
         <div class="podium-name">${this.esc(e.name)}</div>
         <div class="podium-desc">${this.esc(e.description)}</div>
         ${this.scoreBar(e.score, '', e.id)}
+        <div class="podium-votes" onclick="event.stopPropagation()">
+          <button class="btn-vote ${e.user_vote === 1 ? 'active-up' : ''}" data-vote-btn="${e.id}" data-vote-value="1" onclick="App.vote(${e.id}, 1)" title="赞">👍</button>
+          <button class="btn-vote ${e.user_vote === -1 ? 'active-down' : ''}" data-vote-btn="${e.id}" data-vote-value="-1" onclick="App.vote(${e.id}, -1)" title="踩">👎</button>
+        </div>
       </div>
     `).join('');
   },

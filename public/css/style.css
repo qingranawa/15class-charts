@@ -237,7 +237,7 @@ a:hover { text-decoration: underline; }
 .entry-card .score-bar { width: 60px; }
 
 .detail-score-bar { width: 200px; margin: 0 auto; }
-.detail-score-bar .score-bar { height: 12px; border-radius: 6px; }
+.detail-score-bar .score-bar { height: 12px; border-radius: 6px; flex: 1; }
 .detail-score-bar .score-bar-fill { border-radius: 6px; }
 .detail-score-bar .score-bar-num { font-size: 1rem; }
 
@@ -631,3 +631,40 @@ a:hover { text-decoration: underline; }
 /* ====== Footer Disclaimer ====== */
 .footer-disclaimer { font-size: 0.75rem; margin-top: 8px; color: var(--text-muted); opacity: 0.7; }
 
+
+/* 加载动画喵～ */
+.spinner {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 投票按钮加载态喵～ */
+.btn-vote.loading {
+  opacity: 0.5;
+  pointer-events: none;
+  animation: pulse 0.8s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+/* podium 投票按钮样式喵～ */
+.podium-votes {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.podium-votes .btn-vote {
+  font-size: 1.2rem;
+  padding: 4px 10px;
+}
