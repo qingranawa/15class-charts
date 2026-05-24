@@ -1,6 +1,6 @@
 ---
-last_updated: 2026-05-23
-updated_by: superpowers-memory:rebuild
+last_updated: 2026-05-24
+updated_by: superpowers-memory:update
 triggered_by_plan: null
 ---
 
@@ -31,6 +31,7 @@ triggered_by_plan: null
 - **软删除原则** — entries 用 `deleted_at` 标记，不物理删除（除非管理员永久删除）
 - **文件路由** — Cloudflare Functions 按 `functions/api/<path>.js` 自动映射到 `/api/<path>`
 - **CORS 全局开放** — `_middleware.js` 允许所有来源（`Access-Control-Allow-Origin: *`）
+- **登录/注册独立页面** — 不再使用模态弹窗，改用独立全屏页面（login.html / register.html），带渐变光晕背景
 
 ## Testing Conventions
 
@@ -39,17 +40,18 @@ triggered_by_plan: null
 
 ## Git & Workflow
 
-**Commit 格式:** Conventional Commits（`feat:` / `fix:` / `refactor:` / `docs:`）
+**Commit 格式:** Conventional Commits（`feat:` / `fix:` / `refactor:` / `docs:` / `ci:`）
 **分支:** 直接在 main 上开发（小型个人项目）
 **Host:** GitHub (`qingranawa/15class-charts`)
+**CI/CD:** GitHub Actions 在 push main 时自动部署
 
 ## Cross-cutting concerns
 
-**认证:** 所有需登录的 API 通过 `getAuthUser(request, env)` 提取 JWT payload → `functions/_utils.js`
+**认证:** 所有需登录的 API 通过 `getAuthUser(request, env)` 提取 JWT payload，每次请求从 DB 刷新角色和封禁状态 → `functions/_utils.js`
 **鉴权:** admin 操作通过 `requireAdmin()` / `requireStaff()` / `requireOwner()` 拦截 → `functions/_admin.js`
 **CORS:** 全局中间件处理 OPTIONS 预检 + 所有响应注入 Allow-Origin 头 → `functions/_middleware.js`
-**分页:** 前端 `Components.paginateData()` 统一分页逻辑（每页 20 行），写操作后 `clearCache()` 刷新 → `public/js/components.js`
-**乐观更新:** 投票后不刷新榜单，直接更新 DOM 中对应条目的分数/按钮状态 → `public/js/app.js` updateEntryDOM
+**分页:** 前端 `Components.paginateData()` 统一分页逻辑（每页 20 行），写操作后 `clearCache()` 刷新。`goToPage()` 带竞态保护（`_rendering` 锁），防止快速连续点击导致渲染重叠 → `public/js/components.js`
+**乐观更新:** 投票后不等待 API，立即更新 DOM + 显示 Toast；API 失败时回滚分数/票数和按钮状态 → `public/js/app.js` updateEntryDOM/vote
 
 ## Security Standards
 

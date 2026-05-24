@@ -1,6 +1,6 @@
 ---
-last_updated: 2026-05-23
-updated_by: superpowers-memory:rebuild
+last_updated: 2026-05-24
+updated_by: superpowers-memory:update
 triggered_by_plan: null
 ---
 
@@ -36,6 +36,13 @@ triggered_by_plan: null
 | `npx wrangler d1 execute` | D1 远程查询/迁移 |
 | `npx wrangler pages deploy .` | 部署到 Cloudflare Pages |
 
+## CI/CD
+
+**Platform:** GitHub Actions
+**Trigger:** push to main
+**Workflow:** `.github/workflows/deploy.yml` — 自动执行 `wrangler pages deploy`，无需手动部署
+**Secrets:** Cloudflare API token 存储在 GitHub Secrets
+
 ## Configuration
 
 **Environment:** `wrangler.toml` 中的 `vars.JWT_SECRET`（生产环境需更换）
@@ -51,3 +58,4 @@ triggered_by_plan: null
 - **Hosting:** Cloudflare Pages（静态资源 + Functions）
 - **Database:** Cloudflare D1（SQLite，binding 名 `DB`，数据库 `tj-kids-db`）
 - **CDN:** jsDelivr（marked.js）、Google Fonts
+- **CI/CD:** GitHub Actions

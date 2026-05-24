@@ -1,6 +1,6 @@
 ---
-last_updated: 2026-05-23
-updated_by: superpowers-memory:rebuild
+last_updated: 2026-05-24
+updated_by: superpowers-memory:update
 triggered_by_plan: null
 ---
 
@@ -11,7 +11,7 @@ triggered_by_plan: null
 **Overall:** 单体 SPA + Serverless API，部署在 Cloudflare Pages + D1 上喵～
 
 **Key Characteristics:**
-- 前端零框架单页应用，三个 tab 切换（排行榜 / 提交 / 管理），无客户端路由
+- 前端零框架单页应用，四个 tab 切换（排行榜 / 提交 / 账户 / 管理），无客户端路由；登录/注册为独立全屏页面
 - 后端 Cloudflare Functions 按文件路径路由，`_middleware.js` 统一 CORS
 - 自签 JWT（HMAC-SHA256）存 localStorage，`_utils.js` 提供认证基元
 - 软删除模式（`deleted_at` 字段），回收站可恢复
@@ -26,6 +26,7 @@ triggered_by_plan: null
 - Cloudflare Pages — 静态托管 + Functions 运行时
 - Cloudflare D1 (SQLite) — 持久化存储
 - Google Fonts + jsDelivr CDN — 字体和 marked.js 外链
+- GitHub Actions — CI/CD 自动部署（push main → 部署到 Cloudflare Pages）
 
 ## Layering
 
@@ -52,20 +53,28 @@ sequenceDiagram
     participant F as Cloudflare Function
     participant D as D1 (SQLite)
 
+    B->>B: 乐观更新 DOM + Toast 即时显示
     B->>F: POST /api/vote {entry_id, value: 1}
     F->>F: JWT 验证 + 封禁检查
-    F->>D: 查询用户票数余额
+    F->>D: 查询用户票数余额 + 当日投票记录
     F->>D: 查询是否已投过该条目
     alt 未投过
-        F->>D: 扣 1 票 + INSERT vote
-    else 同方向
-        F->>D: DELETE vote + 退票
-    else 反方向
-        F->>D: UPDATE vote value（不扣票数）
+        alt 赞
+            F->>D: 扣 1 票 + INSERT vote (created_at)
+        else 踩
+            F->>D: 不扣票 + INSERT vote (created_at)
+        end
+    else 已投过（当日）
+        F-->>B: 429 "今天已经投过了"
+    else 旧日期投票
+        alt 旧赞被覆盖
+            F->>D: 退 1 票
+        end
+        F->>D: UPDATE vote value + created_at（不扣额外票数）
     end
     F->>D: SUM votes 重算 score（0-10 封顶）
     F-->>B: {score, up_votes, down_votes, vote, vote_balance}
-    B->>B: 乐观更新 DOM（不刷新榜单）
+    B->>B: API 失败则回滚乐观更新
 ```
 
 ### 登录认证流程
