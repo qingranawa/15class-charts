@@ -54,18 +54,37 @@ export async function onRequestPost({ request, env }) {
 
   if (existing) {
     if (existing.value === value) {
-      // 取消投票，退款
-      await env.DB.prepare('DELETE FROM votes WHERE id = ?').bind(existing.id).run();
-      balance += 1;
-      await env.DB.prepare('UPDATE users SET vote_balance = ?, last_vote_refill = ? WHERE id = ?').bind(balance, refill, user.userId).run();
+      if (value === 1) {
+        // 赞 → 取消赞，退款喵～
+        await env.DB.prepare('DELETE FROM votes WHERE id = ?').bind(existing.id).run();
+        balance += 1;
+        await env.DB.prepare('UPDATE users SET vote_balance = ?, last_vote_refill = ? WHERE id = ?').bind(balance, refill, user.userId).run();
+      } else {
+        // 踩 → 踩，不做任何操作（踩票不取消喵～）
+        const stats = await env.DB.prepare('SELECT COALESCE(SUM(CASE WHEN value = 1 THEN 1 ELSE 0 END), 0) as up_votes, COALESCE(SUM(CASE WHEN value = -1 THEN 1 ELSE 0 END), 0) as down_votes FROM votes WHERE entry_id = ?').bind(entry_id).first();
+        const rawScore = stats.up_votes - stats.down_votes;
+        const score = Math.max(0, Math.min(10, rawScore));
+        return json({ score, up_votes: stats.up_votes, down_votes: stats.down_votes, vote: -1, vote_balance: balance });
+      }
     } else {
-      // 改票，不消耗额外票数
+      // 改票方向喵～
+      if (existing.value === 1 && value === -1) {
+        // 从赞改成踩，退款
+        balance += 1;
+      } else if (existing.value === -1 && value === 1) {
+        // 从踩改成赞，消耗票数
+        if (balance < 1) return error('今日票数已用完，明天再来喵～', 429);
+        balance -= 1;
+      }
       await env.DB.prepare('UPDATE votes SET value = ? WHERE id = ?').bind(value, existing.id).run();
-      await env.DB.prepare('UPDATE users SET last_vote_refill = ? WHERE id = ?').bind(refill, user.userId).run();
+      await env.DB.prepare('UPDATE users SET vote_balance = ?, last_vote_refill = ? WHERE id = ?').bind(balance, refill, user.userId).run();
     }
   } else {
-    if (balance < 1) return error('今日票数已用完，明天再来喵～', 429);
-    balance -= 1;
+    // 新投票：赞消耗票数，踩不消耗喵～
+    if (value === 1) {
+      if (balance < 1) return error('今日票数已用完，明天再来喵～', 429);
+      balance -= 1;
+    }
     await env.DB.prepare('INSERT INTO votes (entry_id, user_id, value) VALUES (?, ?, ?)').bind(entry_id, user.userId, value).run();
     await env.DB.prepare('UPDATE users SET vote_balance = ?, last_vote_refill = ? WHERE id = ?').bind(balance, refill, user.userId).run();
   }

@@ -90,9 +90,9 @@ const Components = {
             </div>
           </div>
           <div class="entry-votes" onclick="event.stopPropagation()">
-            <button class="btn-vote ${e.user_vote === 1 ? 'active-up' : ''}" data-vote-btn="${e.id}" onclick="App.vote(${e.id}, 1)" title="赞">👍</button>
+            <button class="btn-vote ${e.user_vote === 1 ? 'active-up' : ''}" data-vote-btn="${e.id}" data-vote-value="1" onclick="App.vote(${e.id}, 1)" title="赞">👍</button>
             ${this.scoreBar(e.score, '', e.id)}
-            <button class="btn-vote ${e.user_vote === -1 ? 'active-down' : ''}" data-vote-btn="${e.id}" onclick="App.vote(${e.id}, -1)" title="踩">👎</button>
+            <button class="btn-vote ${e.user_vote === -1 ? 'active-down' : ''}" data-vote-btn="${e.id}" data-vote-value="-1" onclick="App.vote(${e.id}, -1)" title="踩">👎</button>
           </div>
           ${user && e.submitted_by === user.id ? `
             <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); App.deleteEntry(${e.id})" title="删除">🗑</button>
