@@ -459,61 +459,25 @@ const App = {
       Components.showToast('登录后才能投票喵～', 'error');
       return;
     }
+    // 全局锁：一次只允许一个投票请求喵～
+    if (this._voteInProgress) return;
+    this._voteInProgress = true;
 
-    // 防并发 + 防双击喵～
-    if (!this._voting) this._voting = new Set();
-    if (this._voting.has(entryId)) { console.log('[DEBUG] vote() BLOCKED by _voting lock'); return; }
-    // 1500ms 防抖：同一条目 1.5 秒内只能投一次
-    if (!this._voteLastCall) this._voteLastCall = {};
-    const _ts = Date.now();
-    if (this._voteLastCall[entryId] && _ts - this._voteLastCall[entryId] < 1500) { return; }
-    this._voteLastCall[entryId] = _ts;
-
-    const prevState = this._getVoteState(entryId);
-
-    // 已投过（今天）不能重复投喵～
-    if (prevState !== 0) {
-      const msg = prevState === 1 ? '今天已经赞过了喵～' : '今天已经踩过了喵～';
-      Components.showToast(msg, 'info');
-      return;
-    }
-
-    this._voting.add(entryId);
-
-    // 乐观估算分数
-    const getScoreEl = () => {
-      const num = document.querySelector(`[data-entry-score="${entryId}"] .score-bar-num`);
-      return num ? parseInt(num.textContent) || 0 : 0;
-    };
-    const oldScore = getScoreEl();
-    const prevBalance = this.voteBalance;
-    const estScore = Math.max(0, Math.min(10, oldScore + value));
-
-    if (value === 1) this.voteBalance = Math.max(0, prevBalance - 1);
-
-    // 乐观更新 DOM喵～
-    this.updateEntryDOM(entryId, { score: estScore, vote: value });
-    this.updateAuthUI();
-
-    // Toast 立刻显示，不等待 API 喵～
-    const label = value === 1 ? '赞' : '踩';
-    Components.showToast(`已${label}！剩余 ${this.voteBalance} 票`, 'success');
+    // 按钮 loading 态（唯一视觉反馈，不退订业务逻辑喵～）
+    document.querySelectorAll(`[data-vote-btn="${entryId}"]`).forEach(b => b.classList.add('loading'));
 
     try {
       const data = await API.vote(entryId, value);
       this.voteBalance = data.vote_balance;
-      this._myVotes.set(entryId, data.vote);
       this.updateAuthUI();
-      this.updateEntryDOM(entryId, data);
+      await this.loadLeaderboard();
+      const label = value === 1 ? '赞' : '踩';
+      Components.showToast(`已${label}！剩余 ${data.vote_balance} 票`, 'success');
     } catch (err) {
-      // 回滚乐观更新喵～
-      this.voteBalance = prevBalance;
-      this.updateAuthUI();
-      this._myVotes.delete(entryId);
-      this.updateEntryDOM(entryId, { score: oldScore, vote: 0 });
       Components.showToast(err.message, 'error');
     } finally {
-      this._voting.delete(entryId);
+      document.querySelectorAll(`[data-vote-btn="${entryId}"]`).forEach(b => b.classList.remove('loading'));
+      this._voteInProgress = false;
     }
   },
 
@@ -550,58 +514,30 @@ const App = {
       Components.showToast('登录后才能投票喵～', 'error');
       return;
     }
-
-    // 防并发 + 防双击喵～
-    if (!this._voting) this._voting = new Set();
-    if (this._voting.has(id)) { console.log('[DEBUG] voteFromDetail() BLOCKED by _voting lock'); return; }
-    // 1500ms 防抖：同一条目 1.5 秒内只能投一次
-    if (!this._voteLastCall) this._voteLastCall = {};
-    const _ts = Date.now();
-    if (this._voteLastCall[id] && _ts - this._voteLastCall[id] < 1500) { return; }
-    this._voteLastCall[id] = _ts;
-    this._voting.add(id);
-
-    // 检查是否今天已投喵～
-    const prevState = this._getVoteState(id);
-    if (prevState !== 0) {
-      const msg = prevState === 1 ? '今天已经赞过了喵～' : '今天已经踩过了喵～';
-      Components.showToast(msg, 'info');
-      this._voting.delete(id);
-      return;
-    }
+    // 全局锁：一次只允许一个投票请求喵～
+    if (this._voteInProgress) return;
+    this._voteInProgress = true;
 
     // 加载态喵～
     const detailBtns = document.querySelectorAll('#detailContent [data-vote-btn]');
     detailBtns.forEach(b => b.classList.add('loading'));
 
-    // 乐观更新喵～
-    const oldScoreEl = document.querySelector('#detailContent .score-bar-num');
-    const oldScore = oldScoreEl ? parseInt(oldScoreEl.textContent) || 0 : 0;
-    const estScore = Math.max(0, Math.min(10, oldScore + value));
-    this.updateEntryDOM(id, { score: estScore, vote: value });
-
     try {
       const data = await API.vote(id, value);
       this.voteBalance = data.vote_balance;
-      this._myVotes.set(id, data.vote);
       this.updateAuthUI();
-      this.updateEntryDOM(id, data);
       // 刷新详情模态框内容
       let entry = await API.getEntry(id);
-      // 用本地缓存覆盖 API 的 user_vote（解决 D1 最终一致性）
-      if (this._myVotes && this._myVotes.has(id) && this._myVotes.get(id) !== 0) {
-        entry.user_vote = this._myVotes.get(id);
-      }
       Components.renderDetail(entry);
+      // 同时更新排行榜
+      this.updateEntryDOM(id, data);
       const msg = data.vote === null ? '已取消投票' : `投票成功！剩余 ${data.vote_balance} 票`;
       Components.showToast(msg, 'success');
     } catch (err) {
-      this._myVotes.delete(id);
-      this.updateEntryDOM(id, { score: oldScore, vote: 0 });
       Components.showToast(err.message, 'error');
     } finally {
       detailBtns.forEach(b => b.classList.remove('loading'));
-      this._voting.delete(id);
+      this._voteInProgress = false;
     }
   },
 
