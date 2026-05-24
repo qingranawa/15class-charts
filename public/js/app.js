@@ -15,7 +15,13 @@ const App = {
     this.renderRulesMd();
     this.updateAuthUI();
     this.checkSubmitAccess();
-    if (Auth.isLoggedIn()) await this.refreshVoteBalance();
+    if (Auth.isLoggedIn()) {
+      try {
+        const me = await API.getMe();
+        if (me.role) Auth._user.role = me.role;
+      } catch (e) { /* 角色刷新失败不影响主页 */ }
+      await this.refreshVoteBalance();
+    }
     await this.loadLeaderboard();
   },
 
@@ -404,6 +410,11 @@ const App = {
     // 更新 podium 卡片
     const podiumCard = document.querySelector(`.podium-card[data-entry-id="${entryId}"]`);
     if (podiumCard) {
+      const voteBtns = podiumCard.querySelectorAll(`[data-vote-btn="${entryId}"]`);
+      voteBtns.forEach(b => {
+        b.classList.toggle('active-up', data.vote === 1);
+        b.classList.toggle('active-down', data.vote === -1);
+      });
       const barWrap = podiumCard.querySelector(`[data-entry-score="${entryId}"]`);
       if (barWrap) {
         const pct = Math.round(Math.max(0, Math.min(10, data.score)) / 10 * 100);
@@ -493,7 +504,7 @@ const App = {
   // ====== Detail Modal ======
   async showDetail(id) {
     // 立即显示模态框（加载中状态）
-    document.getElementById('detailContent').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">加载中...</div>';
+    document.getElementById('detailContent').innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div><p style="color:var(--text-secondary);margin-top:12px">加载中...</p></div>';
     this.showModal('detail');
     try {
       const entry = await API.getEntry(id);
@@ -508,6 +519,17 @@ const App = {
       Components.showToast('登录后才能投票喵～', 'error');
       return;
     }
+
+    // 加载态喵～
+    const detailBtns = document.querySelectorAll('#detailContent [data-vote-btn]');
+    detailBtns.forEach(b => b.classList.add('loading'));
+
+    // 乐观更新喵～
+    const oldScoreEl = document.querySelector('#detailContent .score-bar-num');
+    const oldScore = oldScoreEl ? parseInt(oldScoreEl.textContent) || 0 : 0;
+    const estScore = Math.max(0, Math.min(10, oldScore + value));
+    this.updateEntryDOM(id, { score: estScore, vote: value });
+
     try {
       const data = await API.vote(id, value);
       this.voteBalance = data.vote_balance;
@@ -519,7 +541,10 @@ const App = {
       const msg = data.vote === null ? '已取消投票' : `投票成功！剩余 ${data.vote_balance} 票`;
       Components.showToast(msg, 'success');
     } catch (err) {
+      this.updateEntryDOM(id, { score: oldScore, vote: 0 });
       Components.showToast(err.message, 'error');
+    } finally {
+      detailBtns.forEach(b => b.classList.remove('loading'));
     }
   },
 
@@ -751,50 +776,60 @@ const App = {
     const ids = Components.getCheckedIds('adminUsers');
     if (ids.length === 0) { Components.showToast('请先选择用户', 'error'); return; }
     if (!confirm(`确定批量封禁 ${ids.length} 个用户 ${duration} 吗？`)) return;
+    Components.clearCache('adminUsers');
+    Components.showToast(`正在封禁 ${ids.length} 个用户...`, 'info');
     try {
-      for (const id of ids) { await API.adminBanUser(id, duration); }
-      Components.clearCache('adminUsers');
+      await Promise.all(ids.map(id => API.adminBanUser(id, duration)));
       Components.showToast(`已封禁 ${ids.length} 个用户`, 'success');
-      Components.renderAdminUsers();
-      document.getElementById('adminUsersCheckAll').checked = false;
     } catch (err) { Components.showToast(err.message, 'error'); }
+    Components.renderAdminUsers();
+    document.getElementById('adminUsersCheckAll').checked = false;
+    Components.updateBatchBar('adminUsers');
   },
 
   async batchUnbanUsers() {
     const ids = Components.getCheckedIds('adminUsers');
     if (ids.length === 0) { Components.showToast('请先选择用户', 'error'); return; }
     if (!confirm(`确定批量解封 ${ids.length} 个用户吗？`)) return;
+    Components.clearCache('adminUsers');
+    Components.showToast(`正在解封 ${ids.length} 个用户...`, 'info');
     try {
-      for (const id of ids) { await API.adminUnbanUser(id); }
+      await Promise.all(ids.map(id => API.adminUnbanUser(id)));
       Components.showToast(`已解封 ${ids.length} 个用户`, 'success');
-      Components.renderAdminUsers();
-      document.getElementById('adminUsersCheckAll').checked = false;
     } catch (err) { Components.showToast(err.message, 'error'); }
+    Components.renderAdminUsers();
+    document.getElementById('adminUsersCheckAll').checked = false;
+    Components.updateBatchBar('adminUsers');
   },
 
   async batchDeleteUsers() {
     const ids = Components.getCheckedIds('adminUsers');
     if (ids.length === 0) { Components.showToast('请先选择用户', 'error'); return; }
     if (!confirm(`确定删除 ${ids.length} 个用户及其所有数据吗？此操作不可撤销！`)) return;
+    Components.clearCache('adminUsers');
+    Components.showToast(`正在删除 ${ids.length} 个用户...`, 'info');
     try {
-      for (const id of ids) { await API.adminDeleteUser(id); }
+      await Promise.all(ids.map(id => API.adminDeleteUser(id)));
       Components.showToast(`已删除 ${ids.length} 个用户`, 'success');
-      Components.renderAdminUsers();
-      document.getElementById('adminUsersCheckAll').checked = false;
     } catch (err) { Components.showToast(err.message, 'error'); }
+    Components.renderAdminUsers();
+    document.getElementById('adminUsersCheckAll').checked = false;
+    Components.updateBatchBar('adminUsers');
   },
 
   async batchDeleteMyEntries() {
     const ids = Components.getCheckedIds('myEntries');
     if (ids.length === 0) { Components.showToast('请先选择条目', 'error'); return; }
     if (!confirm(`确定删除 ${ids.length} 个条目吗？`)) return;
+    Components.showToast(`正在删除 ${ids.length} 个条目...`, 'info');
     try {
-      for (const id of ids) { await API.deleteEntry(id); }
+      await Promise.all(ids.map(id => API.deleteEntry(id)));
       Components.showToast(`已删除 ${ids.length} 个条目`, 'success');
-      Components.renderMyEntries();
-      this.loadLeaderboard();
-      document.getElementById('myEntriesCheckAll').checked = false;
     } catch (err) { Components.showToast(err.message, 'error'); }
+    Components.renderMyEntries();
+    this.loadLeaderboard();
+    document.getElementById('myEntriesCheckAll').checked = false;
+    Components.updateBatchBar('myEntries');
   },
 };
 
