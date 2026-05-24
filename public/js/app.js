@@ -197,18 +197,28 @@ const App = {
 
   // ====== Modal ======
   showModal(name) {
-    document.getElementById(`modal${name.charAt(0).toUpperCase() + name.slice(1)}`).classList.add('active');
+    const overlay = document.getElementById(`modal${name.charAt(0).toUpperCase() + name.slice(1)}`);
+    overlay.classList.add('active');
     document.body.style.overflow = 'hidden';
+    // 聚焦弹窗内的第一个输入框喵～
+    const firstInput = overlay.querySelector('input');
+    if (firstInput) setTimeout(() => firstInput.focus(), 400);
   },
 
   closeModal(name) {
-    document.getElementById(`modal${name.charAt(0).toUpperCase() + name.slice(1)}`).classList.remove('active');
-    document.body.style.overflow = '';
+    const overlay = document.getElementById(`modal${name.charAt(0).toUpperCase() + name.slice(1)}`);
+    overlay.classList.remove('active');
+    // 等过渡动画播完再恢复滚动喵～
+    setTimeout(() => {
+      if (!document.querySelector('.modal-overlay.active')) {
+        document.body.style.overflow = '';
+      }
+    }, 400);
   },
 
   switchModal(from, to) {
     this.closeModal(from);
-    setTimeout(() => this.showModal(to), 150);
+    setTimeout(() => this.showModal(to), 350);
   },
 
   // ====== Auth Actions ======

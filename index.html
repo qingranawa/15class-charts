@@ -252,43 +252,55 @@
     <p class="footer-disclaimer">免责声明：本网站仅作数据记录之用，不包含任何指向性信息。如内容被曲解或不当使用，本网站不承担任何责任。</p>
   </footer>
 
-  <!-- ====== 登录弹窗 ====== -->
-  <div class="modal-overlay" id="modalLogin">
+  <!-- ====== 登录弹窗（全屏覆盖层） ====== -->
+  <div class="modal-overlay modal-overlay-fullscreen" id="modalLogin">
     <div class="modal">
       <button class="modal-close" onclick="App.closeModal('login')">&times;</button>
-      <h2 class="modal-title">登录</h2>
-      <form id="loginForm">
-        <div class="form-group">
-          <label for="loginUsername">用户名</label>
-          <input type="text" id="loginUsername" placeholder="请输入用户名" required>
+      <div class="fullscreen-modal-inner">
+        <div class="fullscreen-modal-header">
+          <span class="logo-icon">🔥</span>
+          <span class="logo-text">淡紫孩子榜</span>
         </div>
-        <div class="form-group">
-          <label for="loginPassword">密码</label>
-          <input type="password" id="loginPassword" placeholder="请输入密码" required>
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg btn-full">登录</button>
-      </form>
-      <p class="modal-switch">还没有账号？<a href="#" onclick="App.switchModal('login','register')">去注册</a></p>
+        <h2 class="modal-title">登录</h2>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginUsername">用户名</label>
+            <input type="text" id="loginUsername" placeholder="请输入用户名" required>
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">密码</label>
+            <input type="password" id="loginPassword" placeholder="请输入密码" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg btn-full">登录</button>
+        </form>
+        <p class="modal-switch">还没有账号？<a href="#" onclick="App.switchModal('login','register')">去注册</a></p>
+      </div>
     </div>
   </div>
 
-  <!-- ====== 注册弹窗 ====== -->
-  <div class="modal-overlay" id="modalRegister">
+  <!-- ====== 注册弹窗（全屏覆盖层） ====== -->
+  <div class="modal-overlay modal-overlay-fullscreen" id="modalRegister">
     <div class="modal">
       <button class="modal-close" onclick="App.closeModal('register')">&times;</button>
-      <h2 class="modal-title">注册</h2>
-      <form id="registerForm">
-        <div class="form-group">
-          <label for="regUsername">用户名</label>
-          <input type="text" id="regUsername" placeholder="2-20 个字符" minlength="2" maxlength="20" required>
+      <div class="fullscreen-modal-inner">
+        <div class="fullscreen-modal-header">
+          <span class="logo-icon">🔥</span>
+          <span class="logo-text">淡紫孩子榜</span>
         </div>
-        <div class="form-group">
-          <label for="regPassword">密码</label>
-          <input type="password" id="regPassword" placeholder="至少 6 个字符" minlength="6" required>
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg btn-full">注册</button>
-      </form>
-      <p class="modal-switch">已有账号？<a href="#" onclick="App.switchModal('register','login')">去登录</a></p>
+        <h2 class="modal-title">注册</h2>
+        <form id="registerForm">
+          <div class="form-group">
+            <label for="regUsername">用户名</label>
+            <input type="text" id="regUsername" placeholder="2-20 个字符" minlength="2" maxlength="20" required>
+          </div>
+          <div class="form-group">
+            <label for="regPassword">密码</label>
+            <input type="password" id="regPassword" placeholder="至少 6 个字符" minlength="6" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg btn-full">注册</button>
+        </form>
+        <p class="modal-switch">已有账号？<a href="#" onclick="App.switchModal('register','login')">去登录</a></p>
+      </div>
     </div>
   </div>
 
