@@ -237,7 +237,7 @@ a:hover { text-decoration: underline; }
 .entry-card .score-bar { width: 60px; }
 
 .detail-score-bar { width: 200px; margin: 0 auto; }
-.detail-score-bar .score-bar { height: 12px; border-radius: 6px; }
+.detail-score-bar .score-bar { height: 12px; border-radius: 6px; flex: 1; }
 .detail-score-bar .score-bar-fill { border-radius: 6px; }
 .detail-score-bar .score-bar-num { font-size: 1rem; }
 

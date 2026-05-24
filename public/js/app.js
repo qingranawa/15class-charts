@@ -448,6 +448,10 @@ const App = {
       return;
     }
 
+    // 防并发投票喵～
+    if (!this._voting) this._voting = new Set();
+    if (this._voting.has(entryId)) return;
+
     const prevState = this._getVoteState(entryId);
 
     // 已投过（今天）不能重复投喵～
@@ -456,6 +460,8 @@ const App = {
       Components.showToast(msg, 'info');
       return;
     }
+
+    this._voting.add(entryId);
 
     // 乐观估算分数
     const getScoreEl = () => {
@@ -487,6 +493,8 @@ const App = {
       this.updateAuthUI();
       this.updateEntryDOM(entryId, { score: oldScore, vote: 0 });
       Components.showToast(err.message, 'error');
+    } finally {
+      this._voting.delete(entryId);
     }
   },
 
@@ -520,6 +528,20 @@ const App = {
       return;
     }
 
+    // 防并发投票喵～
+    if (!this._voting) this._voting = new Set();
+    if (this._voting.has(id)) return;
+    this._voting.add(id);
+
+    // 检查是否今天已投喵～
+    const prevState = this._getVoteState(id);
+    if (prevState !== 0) {
+      const msg = prevState === 1 ? '今天已经赞过了喵～' : '今天已经踩过了喵～';
+      Components.showToast(msg, 'info');
+      this._voting.delete(id);
+      return;
+    }
+
     // 加载态喵～
     const detailBtns = document.querySelectorAll('#detailContent [data-vote-btn]');
     detailBtns.forEach(b => b.classList.add('loading'));
@@ -545,6 +567,7 @@ const App = {
       Components.showToast(err.message, 'error');
     } finally {
       detailBtns.forEach(b => b.classList.remove('loading'));
+      this._voting.delete(id);
     }
   },
 
