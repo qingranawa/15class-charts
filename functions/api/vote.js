@@ -50,35 +50,32 @@ export async function onRequestPost({ request, env }) {
     }
   }
 
-  const existing = await env.DB.prepare('SELECT id, value FROM votes WHERE entry_id = ? AND user_id = ?').bind(entry_id, user.userId).first();
+  const existing = await env.DB.prepare('SELECT id, value, created_at FROM votes WHERE entry_id = ? AND user_id = ?').bind(entry_id, user.userId).first();
 
   if (existing) {
-    if (existing.value === value) {
-      if (value === 1) {
-        // 赞 → 取消赞，退款喵～
-        await env.DB.prepare('DELETE FROM votes WHERE id = ?').bind(existing.id).run();
-        balance += 1;
-        await env.DB.prepare('UPDATE users SET vote_balance = ?, last_vote_refill = ? WHERE id = ?').bind(balance, refill, user.userId).run();
-      } else {
-        // 踩 → 踩，不做任何操作（踩票不取消喵～）
-        const stats = await env.DB.prepare('SELECT COALESCE(SUM(CASE WHEN value = 1 THEN 1 ELSE 0 END), 0) as up_votes, COALESCE(SUM(CASE WHEN value = -1 THEN 1 ELSE 0 END), 0) as down_votes FROM votes WHERE entry_id = ?').bind(entry_id).first();
-        const rawScore = stats.up_votes - stats.down_votes;
-        const score = Math.max(0, Math.min(10, rawScore));
-        return json({ score, up_votes: stats.up_votes, down_votes: stats.down_votes, vote: -1, vote_balance: balance });
-      }
-    } else {
-      // 改票方向喵～
-      if (existing.value === 1 && value === -1) {
-        // 从赞改成踩，退款
-        balance += 1;
-      } else if (existing.value === -1 && value === 1) {
-        // 从踩改成赞，消耗票数
-        if (balance < 1) return error('今日票数已用完，明天再来喵～', 429);
-        balance -= 1;
-      }
-      await env.DB.prepare('UPDATE votes SET value = ? WHERE id = ?').bind(value, existing.id).run();
-      await env.DB.prepare('UPDATE users SET vote_balance = ?, last_vote_refill = ? WHERE id = ?').bind(balance, refill, user.userId).run();
+    // 检查是否今天已经投过喵～
+    const voteDate = existing.created_at.split(' ')[0];
+    const today = new Date().toISOString().split('T')[0];
+    if (voteDate === today) {
+      return error('今天已经投过这个人物了，明天再来喵～', 429);
     }
+
+    // 旧日期的投票，允许覆盖更新喵～
+    if (existing.value === 1) {
+      // 旧赞被覆盖，退款
+      balance += 1;
+    }
+    // 旧踩被覆盖，不退款（踩本来就不消耗）
+
+    if (value === 1) {
+      // 新赞消耗票数
+      if (balance < 1) return error('今日票数已用完，明天再来喵～', 429);
+      balance -= 1;
+    }
+    // 新踩不消耗票数喵～
+
+    await env.DB.prepare('UPDATE votes SET value = ?, created_at = ? WHERE id = ?').bind(value, new Date().toISOString().replace('T', ' ').slice(0, 19), existing.id).run();
+    await env.DB.prepare('UPDATE users SET vote_balance = ?, last_vote_refill = ? WHERE id = ?').bind(balance, refill, user.userId).run();
   } else {
     // 新投票：赞消耗票数，踩不消耗喵～
     if (value === 1) {
@@ -95,7 +92,5 @@ export async function onRequestPost({ request, env }) {
   const score = Math.max(0, Math.min(10, rawScore));
   await env.DB.prepare('UPDATE entries SET score = ? WHERE id = ?').bind(score, entry_id).run();
 
-  const newVote = existing && existing.value === value ? null : value;
-
-  return json({ score, up_votes: stats.up_votes, down_votes: stats.down_votes, vote: newVote, vote_balance: balance });
+  return json({ score, up_votes: stats.up_votes, down_votes: stats.down_votes, vote: value, vote_balance: balance });
 }

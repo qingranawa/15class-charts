@@ -39,9 +39,10 @@ export async function onRequestGet({ request, env }) {
       e.up_votes = s.up_votes;
       e.down_votes = s.down_votes;
     }
-    // 用户投票状态
+    // 用户投票状态（仅查询今天的投票喵～）
     if (user) {
-      const votes = await env.DB.prepare(`SELECT entry_id, value FROM votes WHERE user_id = ? AND entry_id IN (${placeholders})`).bind(user.userId, ...ids).all();
+      const today = new Date().toISOString().split('T')[0];
+      const votes = await env.DB.prepare(`SELECT entry_id, value FROM votes WHERE user_id = ? AND entry_id IN (${placeholders}) AND created_at >= ?`).bind(user.userId, ...ids, today).all();
       const voteMap = {};
       for (const v of votes.results) voteMap[v.entry_id] = v.value;
       for (const e of entries.results) e.user_vote = voteMap[e.id] || 0;

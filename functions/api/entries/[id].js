@@ -7,11 +7,12 @@ export async function onRequestGet({ request, env, params }) {
 
   const stats = await env.DB.prepare('SELECT COALESCE(SUM(CASE WHEN value = 1 THEN 1 ELSE 0 END), 0) as up_votes, COALESCE(SUM(CASE WHEN value = -1 THEN 1 ELSE 0 END), 0) as down_votes FROM votes WHERE entry_id = ?').bind(params.id).first();
 
-  // 当前用户的投票状态
+  // 当前用户的投票状态（仅今天的喵～）
   const user = await getAuthUser(request, env);
   let user_vote = 0;
   if (user) {
-    const vote = await env.DB.prepare('SELECT value FROM votes WHERE entry_id = ? AND user_id = ?').bind(params.id, user.userId).first();
+    const today = new Date().toISOString().split('T')[0];
+    const vote = await env.DB.prepare('SELECT value FROM votes WHERE entry_id = ? AND user_id = ? AND created_at >= ?').bind(params.id, user.userId, today).first();
     if (vote) user_vote = vote.value;
   }
 

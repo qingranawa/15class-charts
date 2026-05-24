@@ -438,56 +438,43 @@ const App = {
     }
 
     const prevState = this._getVoteState(entryId);
-    if (prevState === -1 && value === -1) {
-      Components.showToast('已经踩过了喵～', 'info');
+
+    // 已投过（今天）不能重复投喵～
+    if (prevState !== 0) {
+      const msg = prevState === 1 ? '今天已经赞过了喵～' : '今天已经踩过了喵～';
+      Components.showToast(msg, 'info');
       return;
     }
 
-    // 估算旧分数喵～
+    // 乐观估算分数
     const getScoreEl = () => {
       const num = document.querySelector(`[data-entry-score="${entryId}"] .score-bar-num`);
       return num ? parseInt(num.textContent) || 0 : 0;
     };
     const oldScore = getScoreEl();
     const prevBalance = this.voteBalance;
+    const estScore = Math.max(0, Math.min(10, oldScore + value));
 
-    // 乐观更新：计算预估分数和票数变化喵～
-    let estScore = oldScore;
-    if (prevState === 0) {
-      estScore = Math.max(0, Math.min(10, oldScore + value));
-      if (value === 1) this.voteBalance = Math.max(0, prevBalance - 1);
-    } else if (prevState === 1 && value === 1) {
-      estScore = Math.max(0, oldScore - 1);
-      this.voteBalance = prevBalance + 1;
-    } else if (prevState === 1 && value === -1) {
-      estScore = Math.max(0, oldScore - 2);
-      this.voteBalance = prevBalance + 1;
-    } else if (prevState === -1 && value === 1) {
-      estScore = Math.min(10, oldScore + 2);
-      this.voteBalance = Math.max(0, prevBalance - 1);
-    }
+    if (value === 1) this.voteBalance = Math.max(0, prevBalance - 1);
 
-    // 乐观更新 DOM 喵～
-    const voteState = (prevState === value) ? 0 : value;
-    this.updateEntryDOM(entryId, { score: estScore, vote: voteState });
+    // 乐观更新 DOM喵～
+    this.updateEntryDOM(entryId, { score: estScore, vote: value });
     this.updateAuthUI();
+
+    // Toast 立刻显示，不等待 API 喵～
+    const label = value === 1 ? '赞' : '踩';
+    Components.showToast(`已${label}！剩余 ${this.voteBalance} 票`, 'success');
 
     try {
       const data = await API.vote(entryId, value);
-      // 用服务端真实数据更新喵～
       this.voteBalance = data.vote_balance;
       this.updateAuthUI();
       this.updateEntryDOM(entryId, data);
-      if (data.vote === null && value === 1) {
-        Components.showToast('已取消投票', 'info');
-      } else if (prevState !== 0 && data.vote !== null) {
-        Components.showToast(value === 1 ? '已改为赞' : '已改为踩', 'success');
-      }
     } catch (err) {
       // 回滚乐观更新喵～
       this.voteBalance = prevBalance;
       this.updateAuthUI();
-      this.updateEntryDOM(entryId, { score: oldScore, vote: prevState });
+      this.updateEntryDOM(entryId, { score: oldScore, vote: 0 });
       Components.showToast(err.message, 'error');
     }
   },
