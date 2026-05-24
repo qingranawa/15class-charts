@@ -1,6 +1,6 @@
 # 15班排行榜 (15class-charts)
 
-淡紫孩子榜 — 记录和展示"操蛋人物"排行榜的投票网站。用户可以提交人物、投票（赞/踩），前三名登上领奖台喵～
+淡紫孩子榜 — 记录和展示"操蛋人物"排行榜的投票网站。用户可以提交人物、投票（赞/踩），前三名“光宗耀祖”
 
 - GitHub: [https://github.com/qingranawa/15class-charts](https://github.com/qingranawa/15class-charts)
 
