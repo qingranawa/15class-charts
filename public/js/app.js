@@ -36,12 +36,6 @@ const App = {
     // 提交表单
     document.getElementById('submitForm').addEventListener('submit', e => this.handleSubmit(e));
 
-    // 登录表单
-    document.getElementById('loginForm').addEventListener('submit', e => this.handleLogin(e));
-
-    // 注册表单
-    document.getElementById('registerForm').addEventListener('submit', e => this.handleRegister(e));
-
     // 编辑条目表单
     const editEntryForm = document.getElementById('editEntryForm');
     if (editEntryForm) editEntryForm.addEventListener('submit', e => this.handleEditEntry(e));
@@ -56,7 +50,7 @@ const App = {
     // ESC 关闭弹窗
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
-        for (const name of ['login', 'register', 'detail', 'editEntry', 'changePassword']) {
+        for (const name of ['detail', 'editEntry']) {
           const el = document.getElementById(`modal${name.charAt(0).toUpperCase() + name.slice(1)}`);
           if (el && el.classList.contains('active')) { this.closeModal(name); break; }
         }
@@ -110,11 +104,11 @@ const App = {
   switchTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.querySelectorAll('.tab-content').forEach(c => {
-      const idMap = { leaderboard: 'tabLeaderboard', submit: 'tabSubmit', myentries: 'tabMyEntries', admin: 'tabAdmin' };
+      const idMap = { leaderboard: 'tabLeaderboard', submit: 'tabSubmit', account: 'tabAccount', admin: 'tabAdmin' };
       c.classList.toggle('active', c.id === idMap[tab]);
     });
     this.checkSubmitAccess();
-    if (tab === 'myentries') Components.renderMyEntries();
+    if (tab === 'account') { this.renderAccountTab(); Components.renderMyEntries(); }
     if (tab === 'admin') Components.renderAdminUsers();
   },
 
@@ -142,7 +136,7 @@ const App = {
       nav.innerHTML = `
         <span class="nav-votes">🎫 <strong>${this.voteBalance}</strong> 票</span>
         <span class="nav-user">👤 ${Components.esc(user.username)}</span>
-        <button class="btn btn-outline btn-sm" onclick="App.showModal('changePassword')" style="margin-right:4px">🔑 改密</button>
+        <button class="btn btn-outline btn-sm" onclick="App.switchTab('account')">👤 账户</button>
         <button class="btn btn-outline btn-sm" onclick="App.logout()">退出</button>
       `;
       // 管理员显示管理 tab
@@ -154,8 +148,8 @@ const App = {
       this.updateStaffOnlyTabs();
     } else {
       nav.innerHTML = `
-        <button class="btn btn-outline btn-sm" onclick="App.showModal('login')">登录</button>
-        <button class="btn btn-primary btn-sm" onclick="App.showModal('register')">注册</button>
+        <a href="/login.html" class="btn btn-outline btn-sm">登录</a>
+        <a href="/register.html" class="btn btn-primary btn-sm">注册</a>
       `;
       const adminTab = document.querySelector('.tab.admin-only');
       if (adminTab) adminTab.style.display = 'none';
@@ -254,23 +248,50 @@ const App = {
     }
   },
 
-  async handleChangePassword(e) {
+  // 账户页改密（使用 account tab 内的表单）喵～
+  async handleAccountChangePassword(e) {
     e.preventDefault();
-    const oldPassword = document.getElementById('oldPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
+    const oldPassword = document.getElementById('acctOldPassword').value;
+    const newPassword = document.getElementById('acctNewPassword').value;
+    const confirmPassword = document.getElementById('acctConfirmPassword').value;
     if (newPassword !== confirmPassword) {
       Components.showToast('两次输入的新密码不一致', 'error');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Components.showToast('新密码至少 6 个字符', 'error');
       return;
     }
     try {
       await API.changePassword(oldPassword, newPassword);
       Components.showToast('密码修改成功喵～', 'success');
-      this.closeModal('changePassword');
-      document.getElementById('changePasswordForm').reset();
+      document.getElementById('accountChangePasswordForm').reset();
     } catch (err) {
       Components.showToast(err.message, 'error');
     }
+  },
+
+  // 渲染账户 tab 信息喵～
+  renderAccountTab() {
+    const user = Auth.getUser();
+    if (!user) return;
+    document.getElementById('accountUsername').textContent = user.username;
+    document.getElementById('accountVotes').textContent = this.voteBalance;
+    // 角色标签
+    const roleEl = document.getElementById('accountRole');
+    const roleLabels = { owner: '所有者', admin: '管理员', user: '普通用户', unauthorized: '已封禁' };
+    roleEl.textContent = roleLabels[user.role] || user.role;
+    roleEl.className = `account-info-value role-badge ${user.role}`;
+    // 注册时间 — 从 JWT 解码 iat
+    try {
+      let payload = Auth._token.split('.')[1];
+      payload = payload.replace(/-/g, '+').replace(/_/g, '/');
+      while (payload.length % 4) payload += '=';
+      const data = JSON.parse(Auth._safeAtob(payload));
+      if (data.iat) {
+        document.getElementById('accountRegTime').textContent = new Date(data.iat).toLocaleString('zh-CN');
+      }
+    } catch { document.getElementById('accountRegTime').textContent = '--'; }
   },
 
   logout() {
@@ -556,7 +577,7 @@ const App = {
   async reportEntry(entryId) {
     if (!Auth.isLoggedIn()) {
       Components.showToast('请先登录喵～', 'error');
-      this.showModal('login');
+      location.href = '/login.html';
       return;
     }
     const reason = prompt('请输入投诉理由（如内容不当、侵犯隐私等）：');

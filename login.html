@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - 淡紫孩子榜</title>
+  <link rel="stylesheet" href="/public/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-card">
+      <a href="/" class="auth-logo">
+        <span class="auth-logo-icon">🔥</span>
+        <span class="auth-logo-text">淡紫孩子榜</span>
+      </a>
+      <h1 class="auth-title">登录</h1>
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="loginUsername">用户名</label>
+          <input type="text" id="loginUsername" placeholder="请输入用户名" autocomplete="username" required autofocus>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">密码</label>
+          <input type="password" id="loginPassword" placeholder="请输入密码" autocomplete="current-password" required>
+        </div>
+        <div class="auth-error" id="authError" style="display:none"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-full">登录</button>
+      </form>
+      <p class="auth-switch">还没有账号？<a href="/register.html">去注册</a></p>
+      <p class="auth-back"><a href="/">&larr; 返回首页</a></p>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/public/js/api.js"></script>
+  <script src="/public/js/auth.js"></script>
+  <script>
+    Auth.init();
+    // 已登录就跳回首页喵～
+    if (Auth.isLoggedIn()) location.href = '/';
+
+    const form = document.getElementById('loginForm');
+    const errorEl = document.getElementById('authError');
+
+    // 显示注册成功提示喵～
+    if (new URLSearchParams(location.search).has('registered')) {
+      showToast('注册成功，请登录～', 'success');
+    }
+
+    function showToast(msg, type) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => { toast.remove(); }, 3000);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      errorEl.style.display = 'none';
+      try {
+        const data = await API.login(username, password);
+        Auth.setSession(data.token, data.user);
+        location.href = '/';
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

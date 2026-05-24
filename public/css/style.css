@@ -71,7 +71,9 @@ a:hover { text-decoration: underline; }
   font-family: inherit; font-size: 0.9rem; font-weight: 500;
   padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;
   transition: all var(--transition); position: relative; overflow: hidden;
+  text-decoration: none;
 }
+.btn:hover { text-decoration: none; }
 
 .btn:active { transform: scale(0.97); }
 
@@ -422,6 +424,91 @@ a:hover { text-decoration: underline; }
 }
 .modal-overlay-fullscreen .modal-close:hover {
   background: rgba(255,255,255,0.08); transform: rotate(90deg);
+}
+
+/* ====== Standalone Auth Pages ====== */
+.auth-page {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 60% 50% at 50% 0%, rgba(240, 192, 96, 0.04), transparent),
+    radial-gradient(ellipse 30% 30% at 30% 100%, rgba(200, 120, 40, 0.03), transparent);
+}
+
+.auth-container {
+  width: 100%; max-width: 440px; padding: 24px;
+}
+
+.auth-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 40px 32px;
+  animation: fadeIn 0.4s ease, slideUp 0.5s ease;
+}
+
+.auth-logo {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-bottom: 32px; text-decoration: none;
+}
+.auth-logo:hover { text-decoration: none; }
+.auth-logo-icon { font-size: 2.5rem; }
+.auth-logo-text {
+  font-size: 1.3rem; font-weight: 900;
+  background: linear-gradient(135deg, #f0d080 0%, #d09030 50%, #f0c060 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+.auth-title { font-size: 1.4rem; font-weight: 700; text-align: center; margin-bottom: 28px; }
+
+.auth-form { display: flex; flex-direction: column; gap: 16px; }
+
+.auth-error {
+  background: var(--red-bg); border: 1px solid var(--red);
+  color: var(--red); padding: 10px 14px; border-radius: 8px;
+  font-size: 0.88rem; animation: fadeIn 0.2s ease;
+}
+
+.auth-switch { text-align: center; font-size: 0.9rem; color: var(--text-secondary); margin-top: 20px; }
+.auth-back { text-align: center; margin-top: 16px; }
+.auth-back a { font-size: 0.85rem; color: var(--text-muted); }
+.auth-back a:hover { color: var(--text-secondary); }
+
+/* ====== Account Tab ====== */
+.account-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+}
+
+.account-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px;
+}
+
+.account-card-full {
+  grid-column: 1 / -1;
+}
+
+.account-card-title {
+  font-size: 1rem; font-weight: 700; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.account-info-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.account-info-item:last-child { border-bottom: none; }
+.account-info-label { font-size: 0.88rem; color: var(--text-secondary); }
+.account-info-value { font-size: 0.95rem; font-weight: 600; }
+.account-info-value.votes { color: var(--gold); font-size: 1.2rem; }
+.account-info-value.role-badge {
+  font-size: 0.78rem; padding: 2px 10px; border-radius: 20px;
+}
+.account-info-value.role-badge.owner { background: rgba(240,192,96,0.15); color: #f0d080; }
+.account-info-value.role-badge.admin { background: var(--gold-bg); color: var(--gold); }
+.account-info-value.role-badge.user { background: rgba(255,255,255,0.05); color: var(--text-secondary); }
+
+@media (max-width: 640px) {
+  .account-grid { grid-template-columns: 1fr; }
+  .auth-card { padding: 28px 20px; }
 }
 
 /* ====== Toast ====== */

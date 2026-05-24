@@ -18,8 +18,8 @@
         <span class="logo-text">淡紫孩子榜</span>
       </a>
       <div class="nav-actions" id="navActions">
-        <button class="btn btn-outline btn-sm" onclick="App.showModal('login')">登录</button>
-        <button class="btn btn-primary btn-sm" onclick="App.showModal('register')">注册</button>
+        <a href="/login.html" class="btn btn-outline btn-sm">登录</a>
+        <a href="/register.html" class="btn btn-primary btn-sm">注册</a>
       </div>
     </div>
   </nav>
@@ -59,7 +59,7 @@
       <div class="tabs">
         <button class="tab active" data-tab="leaderboard">🏆 排行榜</button>
         <button class="tab" data-tab="submit">✍️ 提交新人物</button>
-        <button class="tab login-only" data-tab="myentries" style="display:none">📋 我上传的</button>
+        <button class="tab login-only" data-tab="account" style="display:none">👤 账户</button>
         <button class="tab admin-only" data-tab="admin" style="display:none">🛡️ 管理</button>
       </div>
 
@@ -157,25 +157,71 @@
           <h3>登录后才能提交</h3>
           <p>登录或注册一个账号</p>
           <div class="hint-actions">
-            <button class="btn btn-primary" onclick="App.showModal('login')">登录</button>
-            <button class="btn btn-outline" onclick="App.showModal('register')">注册</button>
+            <a href="/login.html" class="btn btn-primary">登录</a>
+            <a href="/register.html" class="btn btn-outline">注册</a>
           </div>
         </div>
       </div>
 
-      <!-- ====== 我上传的视图 ====== -->
-      <div class="tab-content" id="tabMyEntries">
-        <div class="my-entries-panel" id="myEntriesPanel">
-          <h2 class="section-title">📋 我上传的人物</h2>
-          <div class="batch-bar" id="myEntriesBatchBar" style="display:none">
-            <span class="batch-count" id="myEntriesBatchCount">已选 0 项</span>
-            <button class="btn btn-sm btn-outline" onclick="App.batchDeleteMyEntries()" style="color:var(--red)">🗑 批量删除</button>
+      <!-- ====== 账户视图 ====== -->
+      <div class="tab-content" id="tabAccount">
+        <h2 class="section-title">👤 我的账户</h2>
+        <div class="account-grid">
+          <!-- 账户信息卡片 -->
+          <div class="account-card">
+            <div class="account-card-title">📋 账户信息</div>
+            <div class="account-info-item">
+              <span class="account-info-label">用户名</span>
+              <span class="account-info-value" id="accountUsername">--</span>
+            </div>
+            <div class="account-info-item">
+              <span class="account-info-label">角色</span>
+              <span class="account-info-value" id="accountRole">--</span>
+            </div>
+            <div class="account-info-item">
+              <span class="account-info-label">剩余票数</span>
+              <span class="account-info-value votes" id="accountVotes">--</span>
+            </div>
+            <div class="account-info-item">
+              <span class="account-info-label">注册时间</span>
+              <span class="account-info-value" id="accountRegTime" style="font-size:0.85rem">--</span>
+            </div>
+            <button class="btn btn-outline btn-sm btn-full" onclick="App.logout()" style="margin-top:16px;color:var(--red)">🚪 退出登录</button>
           </div>
-          <div class="admin-table-wrap">
-            <table class="admin-table" id="myEntriesTable">
-              <thead><tr><th><input type="checkbox" id="myEntriesCheckAll" onchange="Components.toggleCheckAll('myEntries', this)"></th><th>ID</th><th>名称</th><th>得分</th><th>分类</th><th>时间</th><th>操作</th></tr></thead>
-              <tbody></tbody>
-            </table>
+
+          <!-- 修改密码卡片 -->
+          <div class="account-card">
+            <div class="account-card-title">🔑 修改密码</div>
+            <form id="accountChangePasswordForm" onsubmit="App.handleAccountChangePassword(event)">
+              <div class="form-group">
+                <label for="acctOldPassword">旧密码</label>
+                <input type="password" id="acctOldPassword" placeholder="请输入旧密码" required>
+              </div>
+              <div class="form-group">
+                <label for="acctNewPassword">新密码</label>
+                <input type="password" id="acctNewPassword" placeholder="至少 6 个字符" minlength="6" required>
+              </div>
+              <div class="form-group">
+                <label for="acctConfirmPassword">确认新密码</label>
+                <input type="password" id="acctConfirmPassword" placeholder="再次输入新密码" minlength="6" required>
+              </div>
+              <button type="submit" class="btn btn-primary btn-full">💾 修改密码</button>
+            </form>
+          </div>
+
+          <!-- 我上传的人物卡片 -->
+          <div class="account-card account-card-full">
+            <div class="account-card-title">📋 我上传的人物</div>
+            <div class="batch-bar" id="myEntriesBatchBar" style="display:none">
+              <span class="batch-count" id="myEntriesBatchCount">已选 0 项</span>
+              <button class="btn btn-sm btn-outline" onclick="App.batchDeleteMyEntries()" style="color:var(--red)">🗑 批量删除</button>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="myEntriesTable">
+                <thead><tr><th><input type="checkbox" id="myEntriesCheckAll" onchange="Components.toggleCheckAll('myEntries', this)"></th><th>ID</th><th>名称</th><th>得分</th><th>分类</th><th>时间</th><th>操作</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -252,58 +298,6 @@
     <p class="footer-disclaimer">免责声明：本网站仅作数据记录之用，不包含任何指向性信息。如内容被曲解或不当使用，本网站不承担任何责任。</p>
   </footer>
 
-  <!-- ====== 登录弹窗（全屏覆盖层） ====== -->
-  <div class="modal-overlay modal-overlay-fullscreen" id="modalLogin">
-    <div class="modal">
-      <button class="modal-close" onclick="App.closeModal('login')">&times;</button>
-      <div class="fullscreen-modal-inner">
-        <div class="fullscreen-modal-header">
-          <span class="logo-icon">🔥</span>
-          <span class="logo-text">淡紫孩子榜</span>
-        </div>
-        <h2 class="modal-title">登录</h2>
-        <form id="loginForm">
-          <div class="form-group">
-            <label for="loginUsername">用户名</label>
-            <input type="text" id="loginUsername" placeholder="请输入用户名" required>
-          </div>
-          <div class="form-group">
-            <label for="loginPassword">密码</label>
-            <input type="password" id="loginPassword" placeholder="请输入密码" required>
-          </div>
-          <button type="submit" class="btn btn-primary btn-lg btn-full">登录</button>
-        </form>
-        <p class="modal-switch">还没有账号？<a href="#" onclick="App.switchModal('login','register')">去注册</a></p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ====== 注册弹窗（全屏覆盖层） ====== -->
-  <div class="modal-overlay modal-overlay-fullscreen" id="modalRegister">
-    <div class="modal">
-      <button class="modal-close" onclick="App.closeModal('register')">&times;</button>
-      <div class="fullscreen-modal-inner">
-        <div class="fullscreen-modal-header">
-          <span class="logo-icon">🔥</span>
-          <span class="logo-text">淡紫孩子榜</span>
-        </div>
-        <h2 class="modal-title">注册</h2>
-        <form id="registerForm">
-          <div class="form-group">
-            <label for="regUsername">用户名</label>
-            <input type="text" id="regUsername" placeholder="2-20 个字符" minlength="2" maxlength="20" required>
-          </div>
-          <div class="form-group">
-            <label for="regPassword">密码</label>
-            <input type="password" id="regPassword" placeholder="至少 6 个字符" minlength="6" required>
-          </div>
-          <button type="submit" class="btn btn-primary btn-lg btn-full">注册</button>
-        </form>
-        <p class="modal-switch">已有账号？<a href="#" onclick="App.switchModal('register','login')">去登录</a></p>
-      </div>
-    </div>
-  </div>
-
   <!-- ====== 详情弹窗 ====== -->
   <div class="modal-overlay" id="modalDetail">
     <div class="modal modal-detail">
@@ -342,29 +336,6 @@
           <input type="number" id="editEntryScore" min="0" required>
         </div>
         <button type="submit" class="btn btn-primary btn-lg btn-full">💾 保存修改</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ====== 修改密码弹窗 ====== -->
-  <div class="modal-overlay" id="modalChangePassword">
-    <div class="modal">
-      <button class="modal-close" onclick="App.closeModal('changePassword')">&times;</button>
-      <h2 class="modal-title">🔑 修改密码</h2>
-      <form id="changePasswordForm" onsubmit="App.handleChangePassword(event)">
-        <div class="form-group">
-          <label for="oldPassword">旧密码</label>
-          <input type="password" id="oldPassword" placeholder="请输入旧密码" required>
-        </div>
-        <div class="form-group">
-          <label for="newPassword">新密码</label>
-          <input type="password" id="newPassword" placeholder="至少 6 个字符" minlength="6" required>
-        </div>
-        <div class="form-group">
-          <label for="confirmPassword">确认新密码</label>
-          <input type="password" id="confirmPassword" placeholder="再次输入新密码" minlength="6" required>
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg btn-full">💾 修改密码</button>
       </form>
     </div>
   </div>
