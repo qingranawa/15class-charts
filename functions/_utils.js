@@ -99,17 +99,23 @@ export async function getAuthUser(request, env) {
   const payload = await verifyToken(auth.slice(7), env.JWT_SECRET);
   if (!payload) return null;
 
-  // 自动解封：检查 banned_until 是否已过期喵～
+  // 从 DB 刷新角色和封禁状态喵～
   try {
     const user = await env.DB.prepare('SELECT role, banned_until FROM users WHERE id = ?').bind(payload.userId).first();
-    if (user && user.role === 'unauthorized' && user.banned_until) {
+    if (!user) return payload;
+
+    // 封禁到期自动恢复喵～
+    if (user.role === 'unauthorized' && user.banned_until) {
       const until = new Date(user.banned_until + 'Z').getTime();
       if (Date.now() > until) {
-        // 封禁到期，自动恢复
         await env.DB.prepare("UPDATE users SET role = 'user', banned_until = NULL WHERE id = ?").bind(payload.userId).run();
         payload.role = 'user';
+        return payload;
       }
     }
+
+    // 刷新角色，角色变更不需要重新登录喵～
+    payload.role = user.role;
   } catch { /* 容错：DB 查询失败不影响已有 token */ }
 
   return payload;
