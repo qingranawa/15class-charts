@@ -468,8 +468,12 @@ const App = {
 
     try {
       const data = await API.vote(entryId, value);
+      // 记录本地投票状态，解决 D1 一致性导致的 user_vote 读取延迟喵～
+      this._myVotes.set(entryId, value);
       this.voteBalance = data.vote_balance;
       this.updateAuthUI();
+      // 先用 vote API 返回的最新数据更新 DOM，不依赖后续 GET 的一致性喵～
+      this.updateEntryDOM(entryId, data);
       await this.loadLeaderboard();
       const label = value === 1 ? '赞' : '踩';
       Components.showToast(`已${label}！剩余 ${data.vote_balance} 票`, 'success');
@@ -524,10 +528,18 @@ const App = {
 
     try {
       const data = await API.vote(id, value);
+      // 记录本地投票状态喵～
+      this._myVotes.set(id, value);
       this.voteBalance = data.vote_balance;
       this.updateAuthUI();
+      // 立即用 vote 数据更新 DOM（不依赖后续 GET 的一致性喵～）
+      this.updateEntryDOM(id, data);
       // 刷新详情模态框内容
       let entry = await API.getEntry(id);
+      // 用本地投票状态覆盖 API 返回的 user_vote
+      if (this._myVotes && this._myVotes.has(id)) {
+        entry.user_vote = this._myVotes.get(id);
+      }
       Components.renderDetail(entry);
       // 同时更新排行榜
       this.updateEntryDOM(id, data);
