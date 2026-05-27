@@ -12,6 +12,7 @@ const App = {
   async init() {
     Auth.init();
     this._myVotes = new Map();
+    this._voteData = new Map(); // 缓存最新 vote 响应数据（score/up_votes/down_votes），解决 D1 一致性问题喵～
     this._voting = new Set();
     this.bindEvents();
     this.renderRulesMd();
@@ -444,6 +445,15 @@ const App = {
         <span style="color:var(--red)">👎 ${data.down_votes || 0} 踩</span>
       `;
     }
+    // 更新详情模态框的分数条喵～
+    const detailScore = document.querySelector(`#detailContent [data-entry-score="${entryId}"]`);
+    if (detailScore) {
+      const pct = Math.round(Math.max(0, Math.min(10, data.score)) / 10 * 100);
+      const fill = detailScore.querySelector('.score-bar-fill');
+      const num = detailScore.querySelector('.score-bar-num');
+      if (fill) fill.style.width = pct + '%';
+      if (num) num.textContent = data.score + '/10';
+    }
   },
 
   _getVoteState(entryId) {
@@ -470,6 +480,7 @@ const App = {
       const data = await API.vote(entryId, value);
       // 记录本地投票状态，解决 D1 一致性导致的 user_vote 读取延迟喵～
       this._myVotes.set(entryId, value);
+      this._voteData.set(entryId, data);
       this.voteBalance = data.vote_balance;
       this.updateAuthUI();
       // 先用 vote API 返回的最新数据更新 DOM，不依赖后续 GET 的一致性喵～
@@ -507,6 +518,13 @@ const App = {
       if (this._myVotes && this._myVotes.has(id)) {
         entry.user_vote = this._myVotes.get(id);
       }
+      // 用本地缓存的 vote 数据覆盖 score/up_votes/down_votes喵～
+      if (this._voteData && this._voteData.has(id)) {
+        const cached = this._voteData.get(id);
+        entry.score = cached.score;
+        entry.up_votes = cached.up_votes;
+        entry.down_votes = cached.down_votes;
+      }
       Components.renderDetail(entry);
     } catch (err) {
       document.getElementById('detailContent').innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">加载失败：${Components.esc(err.message)}</div>`;
@@ -530,6 +548,7 @@ const App = {
       const data = await API.vote(id, value);
       // 记录本地投票状态喵～
       this._myVotes.set(id, value);
+      this._voteData.set(id, data);
       this.voteBalance = data.vote_balance;
       this.updateAuthUI();
       // 立即用 vote 数据更新 DOM（不依赖后续 GET 的一致性喵～）
