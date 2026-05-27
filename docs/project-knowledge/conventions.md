@@ -1,5 +1,5 @@
 ---
-last_updated: 2026-05-24
+last_updated: 2026-05-27
 updated_by: superpowers-memory:update
 triggered_by_plan: null
 ---
@@ -51,7 +51,7 @@ triggered_by_plan: null
 **鉴权:** admin 操作通过 `requireAdmin()` / `requireStaff()` / `requireOwner()` 拦截 → `functions/_admin.js`
 **CORS:** 全局中间件处理 OPTIONS 预检 + 所有响应注入 Allow-Origin 头 → `functions/_middleware.js`
 **分页:** 前端 `Components.paginateData()` 统一分页逻辑（每页 20 行），写操作后 `clearCache()` 刷新。`goToPage()` 带竞态保护（`_rendering` 锁），防止快速连续点击导致渲染重叠 → `public/js/components.js`
-**乐观更新:** 投票后不等待 API，立即更新 DOM + 显示 Toast；API 失败时回滚分数/票数和按钮状态 → `public/js/app.js` updateEntryDOM/vote
+**投票:** 放弃乐观更新，改用按钮 loading 态 + 全局锁（`_voteInProgress`）防止重复提交。等待 API 返回后，直接用响应数据更新 DOM（score/up_votes/down_votes/vote_balance）。本地维护 `_myVotes` 和 `_voteData` 缓存覆盖 D1 最终一致性导致的读取延迟。API 失败仅显示错误 Toast，无需回滚。 → `public/js/app.js` vote/voteFromDetail/updateEntryDOM
 
 ## Security Standards
 

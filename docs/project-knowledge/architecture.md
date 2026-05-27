@@ -1,5 +1,5 @@
 ---
-last_updated: 2026-05-24
+last_updated: 2026-05-27
 updated_by: superpowers-memory:update
 triggered_by_plan: null
 ---
@@ -30,7 +30,7 @@ triggered_by_plan: null
 
 ## Layering
 
-**前端 (SPA)** — 纯静态 HTML/CSS/JS，负责 UI 渲染、Tab 切换、乐观更新。`/public/js/` + `/index.html`
+**前端 (SPA)** — 纯静态 HTML/CSS/JS，负责 UI 渲染、Tab 切换、API 驱动更新。`/public/js/` + `/index.html`
 - Key abstractions: `App`, `Auth`, `API`, `Components`
 
 **后端 (Cloudflare Functions)** — 无状态 HTTP API，JWT 鉴权，文件路由对应 REST 端点。`/functions/`
@@ -53,28 +53,36 @@ sequenceDiagram
     participant F as Cloudflare Function
     participant D as D1 (SQLite)
 
-    B->>B: 乐观更新 DOM + Toast 即时显示
+    B->>B: 按钮 loading 态 + 全局锁 _voteInProgress
     B->>F: POST /api/vote {entry_id, value: 1}
     F->>F: JWT 验证 + 封禁检查
-    F->>D: 查询用户票数余额 + 当日投票记录
+    F->>D: 查询票数余额 + 补充每日票数
     F->>D: 查询是否已投过该条目
     alt 未投过
         alt 赞
-            F->>D: 扣 1 票 + INSERT vote (created_at)
+            F->>D: 扣 1 票 + INSERT vote
         else 踩
-            F->>D: 不扣票 + INSERT vote (created_at)
+            F->>D: 不扣票 + INSERT vote
         end
-    else 已投过（当日）
+    else 今日已投
         F-->>B: 429 "今天已经投过了"
-    else 旧日期投票
+    else 旧日期投票覆盖
         alt 旧赞被覆盖
             F->>D: 退 1 票
         end
-        F->>D: UPDATE vote value + created_at（不扣额外票数）
+        F->>D: UPDATE vote value + created_at
+        alt 新赞
+            F->>D: 扣 1 票
+        end
     end
     F->>D: SUM votes 重算 score（0-10 封顶）
     F-->>B: {score, up_votes, down_votes, vote, vote_balance}
-    B->>B: API 失败则回滚乐观更新
+    B->>B: 更新 _myVotes + _voteData 缓存
+    B->>B: 用 API 响应数据直接更新 DOM + 刷新排行榜
+    B->>B: 恢复按钮状态
+    alt API 失败
+        B->>B: 仅显示错误 Toast（无回滚）
+    end
 ```
 
 ### 登录认证流程

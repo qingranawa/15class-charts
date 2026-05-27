@@ -1,5 +1,5 @@
 ---
-last_updated: 2026-05-24
+last_updated: 2026-05-27
 updated_by: superpowers-memory:update
 triggered_by_plan: null
 ---
@@ -36,7 +36,7 @@ triggered_by_plan: null
 
 **Actors / Entry Points** — 已登录用户；`POST /api/vote`；排行榜卡片和详情弹窗中的赞/踩按钮
 
-**Capability Boundary** — 新用户初始 10 票，每天恢复 1 票（最多累积 10 票）。赞消耗 1 票，踩不消耗。每人每天每条目仅可投一次（以 `created_at` 日期判断）。次日可覆盖旧日期的投票（旧赞退票，旧踩不退）。票数用完时提示"明天再来"。前端乐观更新 DOM + Toast 即时显示，API 失败时回滚。
+**Capability Boundary** — 新用户初始 10 票，每天恢复 1 票（最多累积 10 票）。赞消耗 1 票，踩不消耗。每人每天每条目仅可投一次（以 `created_at` 日期判断）。次日可覆盖旧日期的投票（旧赞退票，旧踩不退）。票数用完时提示"明天再来"。前端不再使用乐观更新，改用按钮 loading 态 + 全局锁（`_voteInProgress`），等待 API 返回后直接用响应数据更新 DOM。本地缓存 `_myVotes`（投票方向）+ `_voteData`（得分数据）覆盖 D1 最终一致性导致的读取延迟。投票后自动刷新排行榜。podium 卡片也支持直接投票。
 
 **References** — architecture.md §场景序列-投票流程；`functions/api/vote.js`
 
